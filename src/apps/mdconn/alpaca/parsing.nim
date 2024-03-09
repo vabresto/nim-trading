@@ -3,6 +3,7 @@ import std/json
 import jsony
 
 import apps/mdconn/alpaca/types
+export types
 
 
 proc renameHook*(v: var AlpacaMdWsReply, fieldName: var string) =

@@ -1,3 +1,6 @@
+import std/options
+
+
 type
   AlpacaAuthError* = object of ValueError
     code*: int
@@ -129,3 +132,23 @@ type
       priceBands*: PriceBandDetails
     of TradingStatus:
       tradingStatus*: TradingStatusDetails
+
+
+func getSymbol*(reply: AlpacaMdWsReply): Option[string] =
+  case reply.kind
+  of ConnectOk, AuthOk, AuthErr, Subscription:
+    none[string]()
+  of Trade:
+    some reply.trade.symbol
+  of Quote:
+    some reply.quote.symbol
+  of BarMinute, BarDay, BarUpdated:
+    some reply.bar.symbol
+  of TradeCorrection:
+    some reply.tradeCorrection.symbol
+  of TradeCancel:
+    some reply.tradeCancel.symbol
+  of PriceBands:
+    some reply.priceBands.symbol
+  of TradingStatus:
+    some reply.tradingStatus.symbol

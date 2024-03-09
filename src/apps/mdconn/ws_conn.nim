@@ -8,6 +8,8 @@ import ws as tf_ws
 import apps/mdconn/alpaca/parsing
 import apps/mdconn/alpaca/types
 
+export types
+
 
 proc receiveMdWsReply*(ws: WebSocket): Future[seq[AlpacaMdWsReply]] {.async.} =
   let rawReply = await ws.receiveStrPacket()
