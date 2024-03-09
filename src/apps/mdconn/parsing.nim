@@ -2,7 +2,7 @@ import std/json
 
 import jsony
 
-import apps/mdconn/alpaca/types
+import core/md/alpaca/types
 export types
 
 
