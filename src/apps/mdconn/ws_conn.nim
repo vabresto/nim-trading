@@ -13,17 +13,15 @@ export types
 
 proc receiveMdWsReply*(ws: WebSocket): Future[seq[AlpacaMdWsReply]] {.async.} =
   let rawReply = await ws.receiveStrPacket()
-  # echo "Got raw reply: ", rawReply
   if rawReply == "":
     return @[]
   let parsed = rawReply.fromJson(seq[AlpacaMdWsReply])
-  # echo "Parsed: ", parsed
   return parsed
 
 
-proc initWebsocket*(): Future[WebSocket] {.async.} =
+proc initWebsocket*(feed: string): Future[WebSocket] {.async.} =
   # First, create the socket
-  var socket: WebSocket = await newWebSocket("wss://stream.data.alpaca.markets/v2/test")
+  var socket: WebSocket = await newWebSocket("wss://stream.data.alpaca.markets/v2/" & feed)
   socket.setupPings(60)
 
   # Will raise if we fail to auth
@@ -64,18 +62,15 @@ proc initWebsocket*(): Future[WebSocket] {.async.} =
         authException.code = reply[0].code
         raise authException
 
+  # All set up, return the socket we created
   socket
 
 
-proc subscribeFakeData*(ws: WebSocket) {.async.} =
+proc subscribeFakeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
   let subscribeMessage = $ %*{
     "action": "subscribe",
-    "trades": @["FAKEPACA"],
-    "quotes": @["FAKEPACA"],
-    "bars": @["FAKEPACA"],
+    "trades": symbols,
+    "quotes": symbols,
+    "bars": symbols,
   }
   await ws.send(subscribeMessage)
-
-
-proc mdWsEventLoop*(ws: WebSocket) {.async.} =
-  discard

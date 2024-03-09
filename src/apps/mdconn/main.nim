@@ -14,9 +14,9 @@ import apps/mdconn/ws_conn
 
 proc main() {.async.} =
   let client = newRedisClient("localhost", pass=some "foobarabc123")
-  var ws = await initWebsocket()
+  var ws = await initWebsocket("test")
 
-  await ws.subscribeFakeData()
+  await ws.subscribeFakeData(@["FAKEPACA"])
 
   while true:
     let replies = await ws.receiveMdWsReply()
