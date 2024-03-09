@@ -17,6 +17,9 @@ import config/connections
 import config/market_data
 
 
+const kEventsProcessedHeartbeat = 5
+
+
 proc loadOrQuit(env: string): string =
   let opt = getOptEnv(env)
   if opt.isNone:
@@ -34,12 +37,19 @@ proc main() {.raises: [].} =
   var redis: RedisClient
   var ws: WebSocket
 
+  var numProcessed = 0
+
   while true:
     try:
+      info "Starting connections ..."
       redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
       ws = waitFor initWebsocket(mdFeed)
 
+      info "Connected; subscribing to data"
+
       waitFor ws.subscribeData(mdSymbols)
+
+      info "Running main loop ..."
 
       while true:
         let replies = waitFor ws.receiveMdWsReply()
@@ -56,6 +66,11 @@ proc main() {.raises: [].} =
           let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
+          else:
+            inc numProcessed
+
+          if numProcessed mod kEventsProcessedHeartbeat == 0:
+            info "Total events processed", numProcessed
 
     # Log any uncaught errors
     except OSError, ValueError, IOSelectorsException:
