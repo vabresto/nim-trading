@@ -164,6 +164,26 @@
       "checksums": {
         "sha1": "20e6931985bf6a987167cca9ac914b6cdab26e9a"
       }
+    },
+    "ws": {
+      "version": "0.5.0",
+      "vcsRevision": "5ac521b72d7d4860fb394e5e1f9f08cf480e9822",
+      "url": "https://github.com/treeform/ws",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "fc2387f52ce71066276df07c72cd21b510bcdb30"
+      }
+    },
+    "jsony": {
+      "version": "1.1.5",
+      "vcsRevision": "649705ec70dffeecba4c40df914b62d37a1c695c",
+      "url": "https://github.com/treeform/jsony",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "84d4a78d049a4d00057f749c72a479c2ea4e38fa"
+      }
     }
   },
   "tasks": {}
