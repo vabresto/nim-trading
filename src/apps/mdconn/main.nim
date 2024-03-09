@@ -2,7 +2,9 @@
 ## It subscribes to Alpaca's market data api, and passes the messages to a redis stream
 
 import std/asyncdispatch
+import std/net
 import std/options
+import std/selectors
 import std/times
 
 import chronicles except toJson
@@ -23,32 +25,53 @@ proc loadOrQuit(env: string): string =
   opt.get
 
 
-proc main() {.async.} =
+proc main() {.raises: [].} =
   let redisHost = loadOrQuit("MD_REDIS_HOST")
 
   let mdFeed = getConfiguredMdFeed()
   let mdSymbols = getConfiguedMdSymbols()
 
-  let client = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
-  var ws = await initWebsocket(mdFeed)
-
-  await ws.subscribeFakeData(mdSymbols)
+  var redis: RedisClient
+  var ws: WebSocket
 
   while true:
-    let replies = await ws.receiveMdWsReply()
-    let today = now().getDateStr()
+    try:
+      redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
+      ws = waitFor initWebsocket(mdFeed)
 
-    for reply in replies:
-      let symbol = block:
-        let symbol = reply.getSymbol()
-        if symbol.isNone:
-          continue
-        symbol.get
+      waitFor ws.subscribeFakeData(mdSymbols)
+
+      while true:
+        let replies = waitFor ws.receiveMdWsReply()
+        let today = now().getDateStr()
+
+        for reply in replies:
+          let symbol = block:
+            let symbol = reply.getSymbol()
+            if symbol.isNone:
+              continue
+            symbol.get
+          
+          let streamName = "md:" & today & ":" & symbol
+          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
+          if not writeResult.isOk:
+            error "Write not ok", msg=writeResult.error.msg
+    except OSError, ValueError, IOSelectorsException:
+      error "Unhandled exception", msg=getCurrentExceptionMsg()
+    except Exception:
+      error "Unhandled generic exception", msg=getCurrentExceptionMsg()
+    finally:
+      try:
+        ws.close()
+      except Exception:
+        error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
+
+      try:
+        redis.close()
+      except SslError, LibraryError:
+        error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+      except Exception:
+        error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
       
-      let streamName = "md:" & today & ":" & symbol
-      let writeResult = client.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
-      if not writeResult.isOk:
-        error "Write not ok", msg=writeResult.error.msg
-  ws.close()
 
-waitFor main()
+main()
