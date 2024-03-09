@@ -39,7 +39,7 @@ proc main() {.raises: [].} =
       redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
       ws = waitFor initWebsocket(mdFeed)
 
-      waitFor ws.subscribeFakeData(mdSymbols)
+      waitFor ws.subscribeData(mdSymbols)
 
       while true:
         let replies = waitFor ws.receiveMdWsReply()
@@ -56,16 +56,22 @@ proc main() {.raises: [].} =
           let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
+
+    # Log any uncaught errors
     except OSError, ValueError, IOSelectorsException:
       error "Unhandled exception", msg=getCurrentExceptionMsg()
     except Exception:
       error "Unhandled generic exception", msg=getCurrentExceptionMsg()
+
+    # Release resources
     finally:
+      # Close websocket
       try:
         ws.close()
       except Exception:
         error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
 
+      # Close redis
       try:
         redis.close()
       except SslError, LibraryError:

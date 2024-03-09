@@ -66,7 +66,7 @@ proc initWebsocket*(feed: string): Future[WebSocket] {.async.} =
   socket
 
 
-proc subscribeFakeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
+proc subscribeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
   let subscribeMessage = $ %*{
     "action": "subscribe",
     "trades": symbols,
