@@ -93,6 +93,7 @@ proc main() {.raises: [].} =
         error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
       except Exception:
         error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-      
 
-main()
+
+when isMainModule:
+  main()
