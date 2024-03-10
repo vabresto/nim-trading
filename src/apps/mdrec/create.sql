@@ -9,7 +9,7 @@ create table if not exists ny.raw_market_data (
   data jsonb
 );
 
-create index raw_md_date_idx ON ny.raw_market_data(date);
-create index raw_md_timestamp_idx ON ny.raw_market_data(timestamp);
-create index raw_md_symbol_idx ON ny.raw_market_data(symbol);
-create index raw_md_type_idx ON ny.raw_market_data(type);
+create index if not exists raw_md_date_idx ON ny.raw_market_data(date);
+create index if not exists raw_md_timestamp_idx ON ny.raw_market_data(timestamp);
+create index if not exists raw_md_symbol_idx ON ny.raw_market_data(symbol);
+create index if not exists raw_md_type_idx ON ny.raw_market_data(type);

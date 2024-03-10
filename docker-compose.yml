@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16.2-alpine
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - db_net
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: ${MD_PG_USER}
+      POSTGRES_PASSWORD: ${MD_PG_PASS}
+      POSTGRES_DB: ${MD_PG_NAME}
+
+  redis:
+    image: redis/redis-stack:latest
+    volumes:
+      - redis_data:/data
+    networks:
+      - redis_net
+    environment:
+      REDIS_ARGS: "--requirepass ${MD_REDIS_PASS}"
+
+  market-data-hub:
+    image: project-ny
+    command: /ny/bin/mdconn
+    depends_on:
+      - redis
+    networks:
+      - redis_net
+    environment:
+      MD_REDIS_HOST: ${MD_REDIS_HOST}
+      MD_REDIS_PASS: ${MD_REDIS_PASS}
+      ALPACA_PAPER_KEY: ${ALPACA_PAPER_KEY}
+      ALPACA_PAPER_SECRET: ${ALPACA_PAPER_SECRET}
+  
+  market-data-recorder:
+    image: project-ny
+    command: /ny/bin/mdrec
+    depends_on:
+      - db
+      - redis
+    networks:
+      - db_net
+      - redis_net
+    environment:
+      MD_REDIS_HOST: ${MD_REDIS_HOST}
+      MD_REDIS_PASS: ${MD_REDIS_PASS}
+      MD_PG_HOST: ${MD_PG_HOST}
+      MD_PG_USER: ${MD_PG_USER}
+      MD_PG_PASS: ${MD_PG_PASS}
+      MD_PG_NAME: ${MD_PG_NAME}
+
+
+volumes:
+  db_data:
+  redis_data:
+
+
+networks:
+  db_net:
+  redis_net:

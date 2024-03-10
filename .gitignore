@@ -1,5 +1,7 @@
 bin/
 
+.env
+
 nimble.paths
 nimble.develop
 

@@ -1,3 +1,4 @@
+# STAGE 1
 FROM nimlang/nim:2.0.2-alpine-regular as build
 
 RUN apk add --update --no-cache openssh
@@ -28,10 +29,12 @@ RUN nimble install --depsOnly
 COPY src src
 RUN nimble build -d:release
 
+
+# STAGE 2
 FROM alpine as runtime
 
 RUN apk add --update --no-cache libpq-dev
 
 WORKDIR /ny
 
-COPY --from=build bin /ny/bin
+COPY --from=build /build/bin /ny/bin

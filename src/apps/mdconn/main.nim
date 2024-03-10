@@ -4,6 +4,7 @@
 import std/asyncdispatch
 import std/net
 import std/options
+import std/os
 import std/selectors
 import std/times
 
@@ -35,7 +36,10 @@ proc main() {.raises: [].} =
   let mdSymbols = getConfiguedMdSymbols()
 
   var redis: RedisClient
+  var redisInitialized = false
+
   var ws: WebSocket
+  var wsInitialized = false
 
   var numProcessed = 0
 
@@ -43,7 +47,10 @@ proc main() {.raises: [].} =
     try:
       info "Starting connections ..."
       redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
+      redisInitialized = true
+
       ws = waitFor initWebsocket(mdFeed)
+      wsInitialized = true
 
       info "Connected; subscribing to data"
 
@@ -81,18 +88,26 @@ proc main() {.raises: [].} =
     # Release resources
     finally:
       # Close websocket
-      try:
-        ws.close()
-      except Exception:
-        error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
+      if wsInitialized:
+        try:
+          ws.close()
+        except Exception:
+          error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
+        except:
+          wsInitialized = false
 
       # Close redis
-      try:
-        redis.close()
-      except SslError, LibraryError:
-        error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-      except Exception:
-        error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+      if redisInitialized:
+        try:
+          redis.close()
+        except SslError, LibraryError:
+          error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+        except Exception:
+          error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+        finally:
+          redisInitialized = false
+
+      sleep(1_000)
 
 
 when isMainModule:
