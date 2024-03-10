@@ -13,7 +13,7 @@ services:
       POSTGRES_DB: ${MD_PG_NAME}
 
   redis:
-    image: redis/redis-stack:latest
+    image: redis/redis-stack:7.2.0-v9
     volumes:
       - redis_data:/data
     networks:
