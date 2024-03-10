@@ -3,6 +3,7 @@ import std/options
 import std/os
 import std/strutils
 
+import chronicles except toJson
 import db_connector/db_postgres
 import jsony
 
@@ -28,6 +29,8 @@ proc getConfiguredMdFeed*(db: DbConn, date: string): string =
       WHERE date = ?;
       """), date):
     return row[0]
+  error "No market data feed configured! Using fallback dummy data feed: 'test'", date
+  return "test"
 
 
 proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string] =
@@ -39,6 +42,12 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
         AND feed = ?;
       """), date, feed):
     result.add row[0]
+  error "No market data symbols configured!", date, feed
+  if feed == "test":
+    # Undocumented feature: feed=test + symbol=FAKEPACA produces fake websocket market data
+    info "Falling back to fake data configs!"
+    return @["FAKEPACA"]
+  return @[]
 
 
 proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply) =
