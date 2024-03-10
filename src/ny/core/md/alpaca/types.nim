@@ -25,6 +25,10 @@ type
 
     TradingStatus
 
+  AlpacaMdWebsocketErrorDetails* = object
+    code*: int
+    msg*: string
+
   SubscriptionDetails* = object
     trades*: seq[string]
     quotes*: seq[string]
@@ -114,8 +118,7 @@ type
     of ConnectOk, AuthOk:
       discard
     of AuthErr:
-      code*: int
-      authErrMsg*: string
+      error*: AlpacaMdWebsocketErrorDetails
     of Subscription:
       subscription*: SubscriptionDetails
     of Trade:

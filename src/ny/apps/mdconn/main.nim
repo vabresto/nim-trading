@@ -56,7 +56,7 @@ proc main() {.raises: [].} =
       info "Redis connected"
 
       info "Starting market data websocket ..."
-      ws = waitFor initWebsocket(mdFeed)
+      ws = waitFor initWebsocket(mdFeed, loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
       wsInitialized = true
       info "Market data websocket connected"
 

@@ -182,9 +182,13 @@ proc enumHook*(v: string, res: var AlpacaMdWsReplyKind) =
 proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
   var entry: JsonNode
   parseHook(s, i, entry)
-  # echo "entry: ", entry
+  
+  let kind = block:
+    var kind: AlpacaMdWsReplyKind
+    enumHook(entry["T"].getStr, kind)
+    kind
 
-  if "msg" in entry:
+  if "msg" in entry and kind != AuthErr:
     if entry["msg"].getStr == "connected":
       v = AlpacaMdWsReply(kind: ConnectOk)
       return
@@ -192,20 +196,15 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
       v = AlpacaMdWsReply(kind: AuthOk)
       return
     else:
-      v = AlpacaMdWsReply(kind: AuthErr, authErrMsg: "Failed to properly parse: " & s)
+      v = AlpacaMdWsReply(kind: AuthErr, error: AlpacaMdWebsocketErrorDetails(code: 700, msg: "Failed to properly parse: " & s))
       return
-
-  let kind = block:
-    var kind: AlpacaMdWsReplyKind
-    enumHook(entry["T"].getStr, kind)
-    kind
 
   case kind
   of ConnectOk, AuthOk:
     # Shouldn't happen, maybe add logging
     discard
   of AuthErr:
-    v = AlpacaMdWsReply(kind: AuthErr, authErrMsg: "Error: " & s)
+    v = AlpacaMdWsReply(kind: kind, error: ($entry).fromJson(AlpacaMdWebsocketErrorDetails))
     return
   of Subscription:
     v = AlpacaMdWsReply(kind: kind, subscription: ($entry).fromJson(SubscriptionDetails))

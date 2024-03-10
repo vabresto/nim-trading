@@ -25,14 +25,21 @@ services:
     image: project-ny
     command: /ny/bin/ny-md-conn
     depends_on:
+      - db
       - redis
     networks:
+      - db_net
       - redis_net
     environment:
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
-      ALPACA_PAPER_KEY: ${ALPACA_PAPER_KEY}
-      ALPACA_PAPER_SECRET: ${ALPACA_PAPER_SECRET}
+      # Readonly usage to get configs
+      MD_PG_HOST: ${MD_PG_HOST}
+      MD_PG_USER: ${MD_PG_USER}
+      MD_PG_PASS: ${MD_PG_PASS}
+      MD_PG_NAME: ${MD_PG_NAME}
+      ALPACA_API_KEY: ${ALPACA_API_KEY}
+      ALPACA_API_SECRET: ${ALPACA_API_SECRET}
   
   market-data-recorder:
     image: project-ny

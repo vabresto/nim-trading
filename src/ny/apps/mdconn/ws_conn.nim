@@ -1,6 +1,5 @@
 import std/asyncdispatch
 import std/json
-import std/os
 
 import jsony
 import ws as tf_ws
@@ -19,7 +18,7 @@ proc receiveMdWsReply*(ws: WebSocket): Future[seq[AlpacaMdWsReply]] {.async.} =
   return parsed
 
 
-proc initWebsocket*(feed: string): Future[WebSocket] {.async.} =
+proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
   # First, create the socket
   var socket: WebSocket = await newWebSocket("wss://stream.data.alpaca.markets/v2/" & feed)
   socket.setupPings(60)
@@ -35,15 +34,15 @@ proc initWebsocket*(feed: string): Future[WebSocket] {.async.} =
         # Unexpected but ok
         break
       elif reply[0].kind == AlpacaMdWsReplyKind.AuthErr:
-        var authException = newException(AlpacaAuthError, reply[0].authErrMsg)
-        authException.code = reply[0].code
+        var authException = newException(AlpacaAuthError, reply[0].error.msg)
+        authException.code = reply[0].error.code
         raise authException
 
   # Next, send auth
   let authMsg = $ %*{
     "action": "auth",
-    "key": getEnv("ALPACA_PAPER_KEY"),
-    "secret": getEnv("ALPACA_PAPER_SECRET"),
+    "key": alpacaKey,
+    "secret": alpacaSecret,
   }
   await socket.send(authMsg)
 
@@ -58,8 +57,8 @@ proc initWebsocket*(feed: string): Future[WebSocket] {.async.} =
         # Got the message we wanted
         break
       elif reply[0].kind == AlpacaMdWsReplyKind.AuthErr:
-        var authException = newException(AlpacaAuthError, reply[0].authErrMsg)
-        authException.code = reply[0].code
+        var authException = newException(AlpacaAuthError, reply[0].error.msg)
+        authException.code = reply[0].error.code
         raise authException
 
   # All set up, return the socket we created
