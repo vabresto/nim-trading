@@ -68,6 +68,9 @@ proc main() =
       let today = now().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+      if mdSymbols.len == 0:
+        error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
+        quit 1
 
       var lastIds = initTable[string, string]()
       for symbol in mdSymbols:
@@ -84,6 +87,10 @@ proc main() =
 
         let replyRaw = redis.receive()
         if replyRaw.isOk:
+          if replyRaw[].kind == Error:
+            error "Got error reply from stream", err=replyRaw[].err
+            continue
+
           let replyParseAttempt = replyRaw[].parseStreamResponse
           if replyParseAttempt.isOk:
             let reply = replyParseAttempt[]

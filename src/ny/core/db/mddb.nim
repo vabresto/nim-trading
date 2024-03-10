@@ -42,11 +42,17 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
         AND feed = ?;
       """), date, feed):
     result.add row[0]
+
+  info "Market data configuration", date, feed, symbols=result
+  if result.len > 0:
+    return result
+  
   error "No market data symbols configured!", date, feed
   if feed == "test":
     # Undocumented feature: feed=test + symbol=FAKEPACA produces fake websocket market data
-    info "Falling back to fake data configs!"
-    return @["FAKEPACA"]
+    result = @["FAKEPACA"]
+    warn "Falling back to fake data configs!", date, feed, symbols=result
+    return result
   return @[]
 
 

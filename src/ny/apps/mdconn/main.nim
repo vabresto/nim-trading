@@ -49,6 +49,9 @@ proc main() {.raises: [].} =
       let today = now().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+      if mdSymbols.len == 0:
+        error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
+        quit 1
 
       info "Starting redis ..."
       redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
