@@ -15,6 +15,7 @@ namedBin["apps/study/ny"] = "study:ny"
 # Dependencies
 
 requires "chronicles#ab3ab545be0b550cca1c2529f7e97fbebf5eba81"
+requires "db_connector#07a60d54c4b68f1b70266ca08a23fb1a7c78c91b"
 requires "jsony#649705ec70dffeecba4c40df914b62d37a1c695c"
 requires "nim >= 2.0.0"
 requires "ws#5ac521b72d7d4860fb394e5e1f9f08cf480e9822"

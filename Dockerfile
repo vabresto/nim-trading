@@ -30,6 +30,8 @@ RUN nimble build -d:release
 
 FROM alpine as runtime
 
+RUN apk add --update --no-cache libpq-dev
+
 WORKDIR /ny
 
 COPY --from=build bin /ny/bin

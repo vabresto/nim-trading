@@ -152,3 +152,23 @@ func getSymbol*(reply: AlpacaMdWsReply): Option[string] =
     some reply.priceBands.symbol
   of TradingStatus:
     some reply.tradingStatus.symbol
+
+
+func getTimestamp*(reply: AlpacaMdWsReply): Option[string] =
+  case reply.kind
+  of ConnectOk, AuthOk, AuthErr, Subscription:
+    none[string]()
+  of Trade:
+    some reply.trade.timestamp
+  of Quote:
+    some reply.quote.timestamp
+  of BarMinute, BarDay, BarUpdated:
+    some reply.bar.timestamp
+  of TradeCorrection:
+    some reply.tradeCorrection.timestamp
+  of TradeCancel:
+    some reply.tradeCancel.timestamp
+  of PriceBands:
+    some reply.priceBands.timestamp
+  of TradingStatus:
+    some reply.tradingStatus.timestamp
