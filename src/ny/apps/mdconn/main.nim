@@ -9,48 +9,52 @@ import std/selectors
 import std/times
 
 import chronicles except toJson
+import db_connector/db_postgres
 import jsony
 import nim_redis
 import ws
 
 import ny/apps/mdconn/ws_conn
-import ny/config/connections
-import ny/config/market_data
+import ny/core/db/mddb
+import ny/core/env/envs
+import ny/core/md/utils
 
 
 const kEventsProcessedHeartbeat = 5
 
 
-proc loadOrQuit(env: string): string =
-  let opt = getOptEnv(env)
-  if opt.isNone:
-    error "Failed to load required env var, terminating", env
-    quit 1
-  opt.get
-
-
 proc main() {.raises: [].} =
-  let redisHost = loadOrQuit("MD_REDIS_HOST")
-
-  let mdFeed = getConfiguredMdFeed()
-  let mdSymbols = getConfiguedMdSymbols()
+  var redisInitialized = false
+  var dbInitialized = false
+  var wsInitialized = false
 
   var redis: RedisClient
-  var redisInitialized = false
-
+  var db: DbConn
   var ws: WebSocket
-  var wsInitialized = false
 
   var numProcessed = 0
 
   while true:
     try:
       info "Starting connections ..."
-      redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
-      redisInitialized = true
+      info "Starting market data db ..."
+      db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
+      dbInitialized = true
+      info "Market data db connected"
 
+      let today = now().getDateStr()
+      let mdFeed = db.getConfiguredMdFeed(today)
+      let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+
+      info "Starting redis ..."
+      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
+      redisInitialized = true
+      info "Redis connected"
+
+      info "Starting market data websocket ..."
       ws = waitFor initWebsocket(mdFeed)
       wsInitialized = true
+      info "Market data websocket connected"
 
       info "Connected; subscribing to data"
 
@@ -59,8 +63,11 @@ proc main() {.raises: [].} =
       info "Running main loop ..."
 
       while true:
+        # If we're on to the next day, reload the program to get the new config
+        if now().getDateStr() != today:
+          break
+
         let replies = waitFor ws.receiveMdWsReply()
-        let today = now().getDateStr()
 
         for reply in replies:
           let symbol = block:
@@ -69,7 +76,7 @@ proc main() {.raises: [].} =
               continue
             symbol.get
           
-          let streamName = "md:" & today & ":" & symbol
+          let streamName = makeStreamName(today, symbol)
           let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
@@ -106,6 +113,13 @@ proc main() {.raises: [].} =
           error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
         finally:
           redisInitialized = false
+
+      # Close db
+      if dbInitialized:
+        try:
+          db.close()
+        finally:
+          dbInitialized = false
 
       sleep(1_000)
 

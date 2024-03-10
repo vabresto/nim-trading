@@ -3,8 +3,6 @@
 
 import std/net
 import std/os
-import std/options
-import std/strutils
 import std/tables
 import std/times
 
@@ -13,9 +11,10 @@ import db_connector/db_postgres
 import jsony
 import nim_redis
 
-import ny/config/connections
-import ny/config/market_data
+import ny/core/db/mddb
+import ny/core/env/envs
 import ny/core/md/alpaca/types
+import ny/core/md/utils
 
 
 type
@@ -26,25 +25,6 @@ type
 
 
 const kEventsProcessedHeartbeat = 5
-
-
-proc getDb*(host: string, user: string, pass: string, db: string): DbConn =
-  let db = open(host, user, pass, db)
-
-  const sqlCreateCommands = readFile(currentSourcePath().parentDir() & "/create.sql")
-  for cmd in sqlCreateCommands.split(";"):
-    if cmd.strip != "":
-      db.exec(sql(cmd.strip))
-
-  db
-
-
-proc loadOrQuit(env: string): string =
-  let opt = getOptEnv(env)
-  if opt.isNone:
-    error "Failed to load required env var, terminating", env
-    quit 1
-  opt.get
 
 
 proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
@@ -58,51 +38,6 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
     return failure "Error parsing as a stream response: " & $val
 
 
-func makeStreamName(date: string, symbol: string): string =
-  "md:" & date & ":" & symbol
-
-
-proc makeReadCommand(streams: Table[string, string]): seq[string] =
-  result.add "XREAD"
-  result.add "BLOCK"
-  result.add "0"
-  result.add "STREAMS"
-
-  for (stream, id) in streams.pairs:
-    result.add stream
-
-  for (stream, id) in streams.pairs:
-    result.add id
-
-
-proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply) =
-  let timestamp = block:
-    if event.getTimestamp.isNone:
-      return
-    else:
-      event.getTimestamp.get.string
-
-  let symbol = block:
-    if event.getSymbol.isNone:
-      return
-    else:
-      event.getSymbol.get.string
-
-  db.exec(sql"""
-  INSERT INTO ny.raw_market_data
-    (id, date, timestamp, symbol, type, data)
-  VALUES
-    (?, ?, ?, ?, ?, ?);
-  """,
-    id,
-    date,
-    timestamp,
-    symbol,
-    event.kind,
-    event.toJson()
-  )
-
-
 proc main() =
   var redisInitialized = false
   var dbInitialized = false
@@ -110,30 +45,33 @@ proc main() =
   var redis: RedisClient
   var db: DbConn
 
+  var numProcessed = 0
+
   while true:
     try:
       let redisHost = loadOrQuit("MD_REDIS_HOST")
       redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
       redisInitialized = true
 
-      var currentDate = ""
       var lastIds = initTable[string, string]()
-      let mdSymbols = getConfiguedMdSymbols()
+      var currentDate = ""
 
-      db = getDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
+      db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
       dbInitialized = true
 
-      var numProcessed = 0
+      let today = now().getDateStr()
+      let mdFeed = db.getConfiguredMdFeed(today)
+      let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+      for symbol in mdSymbols:
+        lastIds[makeStreamName(today, symbol)] = "$"
 
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row
-        let today = now().getDateStr()
-        if currentDate != today:
-          currentDate = today
-          for symbol in mdSymbols:
-            lastIds[makeStreamName(today, symbol)] = "$"
-        redis.send(makeReadCommand(lastIds))
+        if now().getDateStr() != today:
+          break
+          
+        redis.send(makeReadMdStreamsCommand(lastIds))
 
         let replyRaw = redis.receive()
         if replyRaw.isOk:

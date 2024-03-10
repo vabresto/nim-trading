@@ -1,19 +1,12 @@
 ## This module provides some aliases for shared connections
 
 import std/options
-import std/os
 
-
-proc getOptEnv*(env: string): Option[string] =
-  let envKey = getEnv(env)
-  if envKEy == "":
-    none[string]()
-  else:
-    some envKey
+import ny/core/env/envs
 
 
 proc getMdRedisHost*(): Option[string] =
-  some "localhost"
+  getOptEnv("MD_REDIS_HOST")
 
 
 proc getMdRedisPass*(): Option[string] =
