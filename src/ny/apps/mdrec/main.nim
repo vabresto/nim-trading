@@ -2,6 +2,7 @@
 ## It subscribes to a redis stream, and forwards the data into a db
 
 import std/net
+import std/options
 import std/os
 import std/tables
 import std/times
@@ -15,6 +16,10 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/utils
+
+
+logScope:
+  topics = "ny-md-rec"
 
 
 type
@@ -49,22 +54,26 @@ proc main() =
 
   while true:
     try:
-      let redisHost = loadOrQuit("MD_REDIS_HOST")
-      redis = newRedisClient(redisHost, pass=getOptEnv("MD_REDIS_PASS"))
-      redisInitialized = true
-
-      var lastIds = initTable[string, string]()
-      var currentDate = ""
-
+      info "Starting connections ..."
+      info "Starting market data db ..."
       db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
       dbInitialized = true
+      info "Market data db connected"
+
+      info "Starting redis ..."
+      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
+      redisInitialized = true
+      info "Redis connected"
 
       let today = now().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+
+      var lastIds = initTable[string, string]()
       for symbol in mdSymbols:
         lastIds[makeStreamName(today, symbol)] = "$"
 
+      info "Running main loop ..."
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row

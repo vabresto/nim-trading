@@ -20,6 +20,10 @@ import ny/core/env/envs
 import ny/core/md/utils
 
 
+logScope:
+  topics = "ny-md-conn"
+
+
 const kEventsProcessedHeartbeat = 5
 
 
@@ -61,7 +65,6 @@ proc main() {.raises: [].} =
       waitFor ws.subscribeData(mdSymbols)
 
       info "Running main loop ..."
-
       while true:
         # If we're on to the next day, reload the program to get the new config
         if now().getDateStr() != today:
