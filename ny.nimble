@@ -7,9 +7,8 @@ license       = "Proprietary"
 srcDir        = "src"
 installExt    = @["nim"]
 binDir        = "bin"
-namedBin["apps/mdconn/main"] = "mdconn"
-namedBin["apps/mdrec/main"] = "mdrec"
-namedBin["apps/study/ny"] = "study:ny"
+namedBin["ny/apps/mdconn/main"] = "ny-md-conn"
+namedBin["ny/apps/mdrec/main"] = "ny-md-rec"
 
 
 # Dependencies

@@ -13,9 +13,9 @@ import jsony
 import nim_redis
 import ws
 
-import apps/mdconn/ws_conn
-import config/connections
-import config/market_data
+import ny/apps/mdconn/ws_conn
+import ny/config/connections
+import ny/config/market_data
 
 
 const kEventsProcessedHeartbeat = 5

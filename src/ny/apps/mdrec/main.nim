@@ -13,9 +13,9 @@ import db_connector/db_postgres
 import jsony
 import nim_redis
 
-import config/connections
-import config/market_data
-import core/md/alpaca/types
+import ny/config/connections
+import ny/config/market_data
+import ny/core/md/alpaca/types
 
 
 type

@@ -23,7 +23,7 @@ services:
 
   market-data-hub:
     image: project-ny
-    command: /ny/bin/mdconn
+    command: /ny/bin/ny-md-conn
     depends_on:
       - redis
     networks:
@@ -36,7 +36,7 @@ services:
   
   market-data-recorder:
     image: project-ny
-    command: /ny/bin/mdrec
+    command: /ny/bin/ny-md-rec
     depends_on:
       - db
       - redis

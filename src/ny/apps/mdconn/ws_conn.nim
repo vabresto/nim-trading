@@ -5,8 +5,8 @@ import std/os
 import jsony
 import ws as tf_ws
 
-import apps/mdconn/parsing
-import core/md/alpaca/types
+import ny/apps/mdconn/parsing
+import ny/core/md/alpaca/types
 
 export types
 
