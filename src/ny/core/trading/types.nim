@@ -43,6 +43,9 @@ type
   WsOrderUpdate* = object
     stream*: string
     data*: WsOrderUpdateData
+
+    # Added after the fact
+    symbol*: string
     raw*: JsonNode
 
 

@@ -13,7 +13,7 @@ if not client.isOk:
   echo "Failed to create client"
   quit 1
 
-let orderSentResp = client[].sendOrder(makeLimitOrder("AAPL", Buy, Gtc, 100, "50.00", "test-order-id-023"))
+let orderSentResp = client[].sendOrder(makeLimitOrder("AAPL", Buy, Gtc, 100, "50.00", "test-order-id-030"))
 
 if orderSentResp.isOk:
   if not client[].cancelOrder(orderSentResp[].id):

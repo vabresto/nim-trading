@@ -1,103 +1,129 @@
 import std/asyncdispatch
-import std/json
 import std/options
-import std/strutils
+import std/net
+import std/os
+import std/selectors
+import std/times
+
 
 import chronicles except toJson
-import jsony
-import ws as tf_ws
 
 import ny/core/env/envs
-import ny/core/trading/types
+import ny/apps/trade_conn/ws_conn
 
 
-proc toString(str: seq[byte]): string =
-  result = newStringOfCap(len(str))
-  for ch in str:
-    add(result, ch.char)
+import db_connector/db_postgres
+import jsony
+import nim_redis
+import ws
+
+import ny/core/db/mddb
+import ny/core/env/envs
+import ny/core/md/utils
 
 
-proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[WsOrderUpdate]] {.async.} =
-  let rawPacket = if usesBinaryFrames:
-    (await ws.receiveBinaryPacket()).toString()
-  else:
-    await ws.receiveStrPacket()
-
-  # Skip heartbeats
-  if rawPacket == "":
-    return none[WsOrderUpdate]()
-
-  var packet = rawPacket.fromJson(WsOrderUpdate)
-  packet.raw = rawPacket.parseJson
-  return some packet
+logScope:
+  topics = "ny-trade-conn"
 
 
-proc initWebsocket*(baseUrl: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
-  ## Important note: paper trading websocket returns binary frames, but prod uses text frames
-  let usesBinaryFrames = "paper" in baseUrl
+const kEventsProcessedHeartbeat = 5
 
-  # First, create the socket
-  var socket: WebSocket = await newWebSocket(baseUrl)
-  socket.setupPings(60)
 
-  # Next, send auth
-  let authMsg = $ %*{
-    "action": "auth",
-    "key": alpacaKey,
-    "secret": alpacaSecret,
-  }
-  await socket.send(authMsg)
+proc main() {.raises: [].} =
+  var redisInitialized = false
+  # var dbInitialized = false
+  var wsInitialized = false
 
-  # Next, send listen
-  let listenMsg = $ %*{
-    "action": "listen",
-    "data": {
-      "streams": ["trade_updates"],
-    }
-  }
-  await socket.send(listenMsg)
+  var redis: RedisClient
+  # var db: DbConn
+  var ws: WebSocket
 
-  var isAuthorized = false
-  var isListening = false
+  var numProcessed = 0
 
-  # Wait for confirmation
-  # Should consider if it is possible for data to come before we exit the loop here
   while true:
-    let rawPacket = if usesBinaryFrames:
-      (await socket.receiveBinaryPacket()).toString
-    else:
-      await socket.receiveStrPacket()
+    try:
+      info "Starting connections ..."
+      # info "Starting market data db ..."
+      # db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
+      # dbInitialized = true
+      # info "Market data db connected"
 
-    # Skip heartbeats
-    if rawPacket == "":
-      continue
+      let today = now().getDateStr()
 
-    let packet = rawPacket.parseJson()
+      info "Starting redis ..."
+      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
+      redisInitialized = true
+      info "Redis connected"
 
-    if "stream" in packet:
-      let streamName = packet["stream"].getStr()
-      if streamName == "authorization":
-        if "data" in packet and "status" in packet["data"]:
-          if packet["data"]["status"].getStr() == "authorized":
-            isAuthorized = true
-            info "Got auth confirmation"
-      elif streamName == "listening":
-        if "data" in packet and "streams" in packet["data"]:
-          if "trade_updates".newJString in packet["data"]["streams"].getElems():
-            isListening = true
-            info "Got listening confirmation"
-      else:
-        error "Got non-auth packet", packet
-    
-    if isAuthorized and isListening:
-      break
+      info "Starting trade updates websocket ..."
+      ws = waitFor initWebsocket("wss://paper-api.alpaca.markets/stream", loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
+      wsInitialized = true
+      info "Trade updates websocket connected"
 
-  # All set up, return the socket we created
-  socket
+      info "Running main loop ..."
+      while true:
+        # If we're on to the next day, reload the program to get the new config
+        if now().getDateStr() != today:
+          break
+
+        let reply = waitFor ws.receiveTradeUpdateReply(true)
+        if reply.isSome:
+          info "Got reply", reply=reply.get
+
+          let symbol: string = block:
+            if reply.get.symbol != "":
+              reply.get.symbol
+            else:
+              warn "Failed to get symbol"
+              continue
+          
+          let streamName = makeStreamName(today, symbol)
+          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
+          if not writeResult.isOk:
+            error "Write not ok", msg=writeResult.error.msg
+          else:
+            inc numProcessed
+
+          if numProcessed mod kEventsProcessedHeartbeat == 0:
+            info "Total events processed", numProcessed
+
+    # Log any uncaught errors
+    except OSError, ValueError, IOSelectorsException:
+      error "Unhandled exception", msg=getCurrentExceptionMsg()
+    except Exception:
+      error "Unhandled generic exception", msg=getCurrentExceptionMsg()
+
+    # Release resources
+    finally:
+      # Close websocket
+      if wsInitialized:
+        try:
+          ws.close()
+        except Exception:
+          error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
+        except:
+          wsInitialized = false
+
+      # Close redis
+      if redisInitialized:
+        try:
+          redis.close()
+        except SslError, LibraryError:
+          error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+        except Exception:
+          error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
+        finally:
+          redisInitialized = false
+
+      # # Close db
+      # if dbInitialized:
+      #   try:
+      #     db.close()
+      #   finally:
+      #     dbInitialized = false
+
+      sleep(1_000)
 
 
-let ws = waitFor initWebsocket("wss://paper-api.alpaca.markets/stream", loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
-while true:
-  let reply = waitFor ws.receiveTradeUpdateReply(true)
-  if reply.isSome:
-    info "Got update", update=reply.get
+when isMainModule:
+  main()
