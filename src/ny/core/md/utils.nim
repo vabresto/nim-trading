@@ -1,8 +1,12 @@
 import std/tables
 
 
-func makeStreamName*(date: string, symbol: string): string =
+func makeMdStreamName*(date: string, symbol: string): string =
   "md:" & date & ":" & symbol
+
+
+func makeOuStreamName*(date: string, symbol: string): string =
+  "ou:" & date & ":" & symbol
 
 
 proc makeReadMdStreamsCommand*(streams: Table[string, string]): seq[string] =

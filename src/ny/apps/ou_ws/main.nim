@@ -72,7 +72,7 @@ proc main() {.raises: [].} =
               warn "Failed to get symbol"
               continue
           
-          let streamName = makeStreamName(today, symbol)
+          let streamName = makeOuStreamName(today, symbol)
           let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg

@@ -74,7 +74,7 @@ proc main() =
 
       var lastIds = initTable[string, string]()
       for symbol in mdSymbols:
-        lastIds[makeStreamName(today, symbol)] = "$"
+        lastIds[makeMdStreamName(today, symbol)] = "$"
 
       info "Running main loop ..."
       while true:
