@@ -4,7 +4,7 @@ import std/json
 import jsony
 import ws as tf_ws
 
-import ny/apps/mdconn/parsing
+import ny/apps/md_ws/parsing
 import ny/core/md/alpaca/types
 
 export types

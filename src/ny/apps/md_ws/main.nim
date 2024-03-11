@@ -14,7 +14,7 @@ import jsony
 import nim_redis
 import ws
 
-import ny/apps/mdconn/ws_conn
+import ny/apps/md_ws/md_ws_conn
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils

@@ -1,29 +1,24 @@
 import std/asyncdispatch
-import std/options
 import std/net
+import std/options
 import std/os
 import std/selectors
 import std/times
 
-
 import chronicles except toJson
-
-import ny/core/env/envs
-import ny/apps/trade_conn/ws_conn
-
-
-import db_connector/db_postgres
+# import db_connector/db_postgres
 import jsony
 import nim_redis
 import ws
 
-import ny/core/db/mddb
+import ny/apps/ou_ws/ou_ws_conn
+# import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
 
 
 logScope:
-  topics = "ny-trade-conn"
+  topics = "ny-ou-ws"
 
 
 const kEventsProcessedHeartbeat = 5

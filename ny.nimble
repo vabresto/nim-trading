@@ -7,9 +7,9 @@ license       = "Proprietary"
 srcDir        = "src"
 installExt    = @["nim"]
 binDir        = "bin"
-namedBin["ny/apps/mdconn/main"] = "ny-md-conn"
-namedBin["ny/apps/mdrec/main"] = "ny-md-rec"
-namedBin["ny/apps/trade_conn/main"] = "ny-trade-conn"
+namedBin["ny/apps/md_ws/main"] = "ny-md-ws"
+namedBin["ny/apps/md_rec/main"] = "ny-md-rec"
+namedBin["ny/apps/ou_ws/main"] = "ny-ou-ws"
 namedBin["ny/apps/trading/main"] = "ny-trading"
 
 
