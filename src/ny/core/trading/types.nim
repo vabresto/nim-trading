@@ -2,28 +2,18 @@ import std/json
 
 import jsony
 
+import ny/core/trading/enums/order_kind
+import ny/core/trading/enums/side
+import ny/core/trading/enums/tif
+
+export order_kind
+export side
+export tif
+
 
 type
-  SideKind* = enum
-    Buy
-    Sell
-  
-  OrderKind* = enum
-    Market
-    Limit
-    # Stop
-    # StopLimit
-    # StopTrailing
-
-  TifKind* = enum
-    Day
-    Gtc
-    OpeningAuction
-    ClosingAuction
-    Ioc
-    Fok
-
   Order* = object
+    id*: string = "" # set by the remote
     symbol*: string
     side*: SideKind
     kind*: OrderKind
@@ -43,6 +33,16 @@ type
   OrderCreateResponse* = object
     id*: string
     clientOrderId*: string
+    raw*: JsonNode
+
+  WsOrderUpdateData* = object
+    event*: string
+    timestamp*: string
+    order*: Order
+
+  WsOrderUpdate* = object
+    stream*: string
+    data*: WsOrderUpdateData
     raw*: JsonNode
 
 
@@ -149,44 +149,6 @@ func makeLimitOrder*(symbol: string, side: SideKind, tif: TifKind, quantity: int
   )
 
 
-proc dumpHook*(s: var string, v: SideKind) =
-  case v
-  of Buy:
-    s.add "buy"
-  of Sell:
-    s.add "sell"
-
-
-proc dumpHook*(s: var string, v: OrderKind) =
-  case v
-  of Market:
-    s.add "market"
-  of Limit:
-    s.add "limit"
-  # of Stop:
-  #   s.add "stop"
-  # of StopLimit:
-  #   s.add "stop_limit"
-  # of StopTrailing:
-  #   s.add "trailing_stop"
-
-
-proc dumpHook*(s: var string, v: TifKind) =
-  case v
-  of Day:
-    s.add "day"
-  of Gtc:
-    s.add "gtc"
-  of OpeningAuction:
-    s.add "opg"
-  of ClosingAuction:
-    s.add "cls"
-  of Ioc:
-    s.add "ioc"
-  of Fok:
-    s.add "fok"
-
-
 proc dumpHook*(s: var string, v: Order) =
   s.add "{\"symbol\":"
   dumpHook(s, v.symbol)
@@ -222,4 +184,9 @@ proc dumpHook*(s: var string, v: Order) =
   dumpHook(s, v.clientOrderId)
   s.add "}"  
 
-  
+
+proc renameHook*(v: var Order, fieldName: var string) =
+  if fieldName == "time_in_force":
+    fieldName = "tif"
+  elif fieldName == "order_type":
+    fieldName = "kind"

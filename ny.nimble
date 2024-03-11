@@ -9,6 +9,7 @@ installExt    = @["nim"]
 binDir        = "bin"
 namedBin["ny/apps/mdconn/main"] = "ny-md-conn"
 namedBin["ny/apps/mdrec/main"] = "ny-md-rec"
+namedBin["ny/apps/trade_conn/main"] = "ny-trade-conn"
 namedBin["ny/apps/trading/main"] = "ny-trading"
 
 
