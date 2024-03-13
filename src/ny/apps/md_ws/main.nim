@@ -24,13 +24,15 @@ logScope:
   topics = "ny-md-conn"
 
 
-const kEventsProcessedHeartbeat = 5
+const kEventsProcessedHeartbeat = 5_000
 
 
 proc main() {.raises: [].} =
   var redisInitialized = false
   var dbInitialized = false
   var wsInitialized = false
+
+  var dbEverConnected = false
 
   var redis: RedisClient
   var db: DbConn
@@ -44,6 +46,7 @@ proc main() {.raises: [].} =
       info "Starting market data db ..."
       db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
       dbInitialized = true
+      dbEverConnected = true
       info "Market data db connected"
 
       let today = now().getDateStr()
@@ -95,6 +98,11 @@ proc main() {.raises: [].} =
     # Log any uncaught errors
     except OSError, ValueError, IOSelectorsException:
       error "Unhandled exception", msg=getCurrentExceptionMsg()
+    except DbError:
+      if not dbEverConnected:
+        warn "DbError", msg=getCurrentExceptionMsg()  
+      else:
+        error "DbError", msg=getCurrentExceptionMsg()
     except Exception:
       error "Unhandled generic exception", msg=getCurrentExceptionMsg()
 

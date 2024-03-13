@@ -2,12 +2,17 @@ import std/net
 import std/options
 import std/os
 import std/strutils
+import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
 import jsony
 
 import ny/core/md/alpaca/types
+
+
+proc dbFmt*(dt: DateTime): string =
+  dt.format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
 
 
 proc getMdDb*(host: string, user: string, pass: string, db: string): DbConn =
@@ -56,7 +61,7 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
   return @[]
 
 
-proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply) =
+proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, recordingTimestamp: DateTime) =
   let timestamp = block:
     if event.getTimestamp.isNone:
       return
@@ -71,14 +76,15 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
 
   db.exec(sql"""
   INSERT INTO ny.raw_market_data
-    (id, date, timestamp, symbol, type, data)
+    (id, date, timestamp, symbol, type, data, recording_timestamp)
   VALUES
-    (?, ?, ?, ?, ?, ?);
+    (?, ?, ?, ?, ?, ?, ?);
   """,
     id,
     date,
     timestamp,
     symbol,
     event.kind,
-    event.toJson()
+    event.toJson(),
+    recordingTimestamp.dbFmt,
   )

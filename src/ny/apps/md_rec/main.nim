@@ -29,7 +29,7 @@ type
     contents: RedisValue
 
 
-const kEventsProcessedHeartbeat = 5
+const kEventsProcessedHeartbeat = 5_000
 
 
 proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
@@ -47,6 +47,8 @@ proc main() =
   var redisInitialized = false
   var dbInitialized = false
 
+  var dbEverConnected = false
+
   var redis: RedisClient
   var db: DbConn
 
@@ -59,6 +61,7 @@ proc main() =
       db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
       dbInitialized = true
       info "Market data db connected"
+      dbEverConnected = true
 
       info "Starting redis ..."
       redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
@@ -82,7 +85,7 @@ proc main() =
         # This means we can just leave it running for multiple days in a row
         if now().getDateStr() != today:
           break
-          
+
         redis.send(makeReadMdStreamsCommand(lastIds))
 
         let replyRaw = redis.receive()
@@ -98,7 +101,7 @@ proc main() =
 
             if reply.contents.arr.len >= 2 and reply.contents.arr[0].str == "data":
               let msg = reply.contents.arr[1].str.fromJson(AlpacaMdWsReply)
-              db.insertRawMdEvent(reply.id, today, msg)
+              db.insertRawMdEvent(reply.id, today, msg, now())
               inc numProcessed
 
               if numProcessed mod kEventsProcessedHeartbeat == 0:
@@ -108,7 +111,10 @@ proc main() =
       error "OSError", msg=getCurrentExceptionMsg()
 
     except DbError:
-      error "DbError", msg=getCurrentExceptionMsg()
+      if not dbEverConnected:
+        warn "DbError", msg=getCurrentExceptionMsg()  
+      else:
+        error "DbError", msg=getCurrentExceptionMsg()
 
     except Exception:
       error "Generic uncaught exception", msg=getCurrentExceptionMsg()
