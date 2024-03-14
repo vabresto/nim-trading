@@ -1,6 +1,7 @@
 ## This is a market data recorder
 ## It subscribes to a redis stream, and forwards the data into a db
 
+import std/enumerate
 import std/net
 import std/options
 import std/os
@@ -16,6 +17,8 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/utils
+import ny/core/utils/sim_utils
+import ny/core/utils/time_utils
 
 
 logScope:
@@ -26,19 +29,42 @@ type
   StreamResponse = object
     stream: string
     id: string
-    contents: RedisValue
+    rawContents: RedisValue
+    mdReply: AlpacaMdWsReply
+    recordingTimestamp: DateTime
 
 
-const kEventsProcessedHeartbeat = 5_000
+
+const kEventsProcessedHeartbeat = 5
 
 
 proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
   var resp = StreamResponse()
   try:
-    resp.stream = val.arr[0].arr[0].str
-    resp.id = val.arr[0].arr[1].arr[0].arr[0].str
-    resp.contents = val.arr[0].arr[1].arr[0].arr[1]
-    return success resp
+    case val.kind
+    of Array:
+      var dataIdx = 0
+      var timestampIdx = 0
+
+      let inner = val.arr[0].arr[1].arr[0].arr[1]
+      for curIdx, item in enumerate(inner.arr):
+        case item.kind
+        of SimpleString, BulkString:
+          if item.str == "data":
+            dataIdx = curIdx + 1
+            resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
+          if item.str == "receive_timestamp":
+            timestampIdx = curIdx + 1
+            resp.recordingTimestamp = inner.arr[curIdx + 1].str.parseDbTs
+        else:
+          discard
+
+      resp.stream = val.arr[0].arr[0].str
+      resp.id = val.arr[0].arr[1].arr[0].arr[0].str
+      resp.rawContents = val.arr[0].arr[1].arr[0].arr[1]
+      return success resp
+    of Null, Error, SimpleString, BulkString, Integer:
+      return failure "Unable to parse non-array stream value: " & $val
   except ValueError:
     return failure "Error parsing as a stream response: " & $val
 
@@ -68,7 +94,7 @@ proc main() =
       redisInitialized = true
       info "Redis connected"
 
-      let today = now().getDateStr()
+      let today = getNowUtc().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
       if mdSymbols.len == 0:
@@ -77,16 +103,16 @@ proc main() =
 
       var lastIds = initTable[string, string]()
       for symbol in mdSymbols:
-        lastIds[makeMdStreamName(today, symbol)] = "$"
+        lastIds[makeMdStreamName(today, symbol)] = getInitialStreamId()
 
       info "Running main loop ..."
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row
-        if now().getDateStr() != today:
+        if getNowUtc().getDateStr() != today:
           break
 
-        redis.send(makeReadMdStreamsCommand(lastIds))
+        redis.send(makeReadMdStreamsCommand(lastIds, simulation=isSimuluation()))
 
         let replyRaw = redis.receive()
         if replyRaw.isOk:
@@ -99,13 +125,15 @@ proc main() =
             let reply = replyParseAttempt[]
             lastIds[reply.stream] = reply.id
 
-            if reply.contents.arr.len >= 2 and reply.contents.arr[0].str == "data":
-              let msg = reply.contents.arr[1].str.fromJson(AlpacaMdWsReply)
-              db.insertRawMdEvent(reply.id, today, msg, now())
+            if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
+              let recordTs = getNowUtc()
+              db.insertRawMdEvent(reply.id, today, reply.mdReply, reply.recordingTimestamp, recordTs)
               inc numProcessed
 
               if numProcessed mod kEventsProcessedHeartbeat == 0:
                 info "Total events processed", numProcessed
+        else:
+          warn "Error receiving", err=replyRaw.error.msg
 
     except OSError:
       error "OSError", msg=getCurrentExceptionMsg()

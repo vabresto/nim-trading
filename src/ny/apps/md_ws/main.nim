@@ -18,6 +18,7 @@ import ny/apps/md_ws/md_ws_conn
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
+import ny/core/utils/time_utils
 
 
 logScope:
@@ -49,7 +50,7 @@ proc main() {.raises: [].} =
       dbEverConnected = true
       info "Market data db connected"
 
-      let today = now().getDateStr()
+      let today = getNowUtc().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
       if mdSymbols.len == 0:
@@ -73,10 +74,10 @@ proc main() {.raises: [].} =
       info "Running main loop ..."
       while true:
         # If we're on to the next day, reload the program to get the new config
-        if now().getDateStr() != today:
+        if getNowUtc().getDateStr() != today:
           break
 
-        let replies = waitFor ws.receiveMdWsReply()
+        let (replies, receiveTs) = waitFor ws.receiveMdWsReply()
 
         for reply in replies:
           let symbol = block:
@@ -86,7 +87,7 @@ proc main() {.raises: [].} =
             symbol.get
           
           let streamName = makeMdStreamName(today, symbol)
-          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
+          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson(), "receive_timestamp", receiveTs.dbFmt()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
           else:

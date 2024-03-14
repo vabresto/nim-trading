@@ -13,6 +13,9 @@ namedBin["ny/apps/ou_ws/main"] = "ny-ou-ws"
 namedBin["ny/apps/trading/main"] = "ny-trading"
 
 
+# For some reason, running on mac requires setting `DYLD_LIBRARY_PATH=/usr/local/lib` before calling the binary ...
+
+
 # Dependencies
 
 requires "chronicles#ab3ab545be0b550cca1c2529f7e97fbebf5eba81"

@@ -1,5 +1,6 @@
 create schema if not exists ny;
 
+
 create table if not exists ny.raw_market_data (
   id text not null,
   date date not null,
@@ -10,6 +11,7 @@ create table if not exists ny.raw_market_data (
 
   primary key(id, symbol),
 
+  receive_timestamp timestamptz not null,
   recording_timestamp timestamptz not null
 );
 
@@ -17,6 +19,20 @@ create index if not exists raw_md_date_idx ON ny.raw_market_data(date);
 create index if not exists raw_md_timestamp_idx ON ny.raw_market_data(timestamp);
 create index if not exists raw_md_symbol_idx ON ny.raw_market_data(symbol);
 create index if not exists raw_md_type_idx ON ny.raw_market_data(type);
+
+CREATE OR REPLACE VIEW ny.market_data_time_diffs AS
+SELECT
+	id,
+  symbol,
+  timestamp at time zone 'America/New_York' as ev_ts,
+  receive_timestamp at time zone 'America/New_York' as rcv_ts,
+  recording_timestamp at time zone 'America/New_York' as rcd_ts,
+  
+  extract(epoch from receive_timestamp - timestamp) as network_time_sec,
+  extract(epoch from recording_timestamp - receive_timestamp) as internal_time_sec,
+  extract(epoch from (recording_timestamp - timestamp)) as total_time_sec
+FROM ny.raw_market_data
+WHERE type != 'BarMinute'
 
 
 create table if not exists ny.md_subscriptions (

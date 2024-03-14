@@ -1,21 +1,24 @@
 import std/asyncdispatch
 import std/json
+import std/times
 
 import jsony
 import ws as tf_ws
 
 import ny/apps/md_ws/parsing
 import ny/core/md/alpaca/types
+import ny/core/utils/time_utils
 
 export types
 
 
-proc receiveMdWsReply*(ws: WebSocket): Future[seq[AlpacaMdWsReply]] {.async.} =
+proc receiveMdWsReply*(ws: WebSocket): Future[tuple[md: seq[AlpacaMdWsReply], receiveTs: DateTime]] {.async.} =
   let rawReply = await ws.receiveStrPacket()
+  let receiveTimestamp = getNowUtc()
   if rawReply == "":
-    return @[]
+    return (@[], receiveTimestamp)
   let parsed = rawReply.fromJson(seq[AlpacaMdWsReply])
-  return parsed
+  return (parsed, receiveTimestamp)
 
 
 proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
@@ -25,7 +28,7 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
 
   # Will raise if we fail to auth
   while true:
-    let reply = await socket.receiveMdWsReply()
+    let (reply, _) = await socket.receiveMdWsReply()
     if reply.len > 0:
       if reply[0].kind == AlpacaMdWsReplyKind.ConnectOk:
         # Got the message we wanted
@@ -48,7 +51,7 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
 
   # Wait for confirmation
   while true:
-    let reply = await socket.receiveMdWsReply()
+    let (reply, _) = await socket.receiveMdWsReply()
     if reply.len > 0:
       if reply[0].kind == AlpacaMdWsReplyKind.ConnectOk:
         # Unexpected but ok

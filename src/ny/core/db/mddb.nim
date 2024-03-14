@@ -15,6 +15,10 @@ proc dbFmt*(dt: DateTime): string =
   dt.format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
 
 
+proc parseDbTs*(s: string): DateTime =
+  s.parse("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
+
+
 proc getMdDb*(host: string, user: string, pass: string, db: string): DbConn =
   let db = open(host, user, pass, db)
 
@@ -61,7 +65,7 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
   return @[]
 
 
-proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, recordingTimestamp: DateTime) =
+proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
   let timestamp = block:
     if event.getTimestamp.isNone:
       return
@@ -76,9 +80,9 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
 
   db.exec(sql"""
   INSERT INTO ny.raw_market_data
-    (id, date, timestamp, symbol, type, data, recording_timestamp)
+    (id, date, timestamp, symbol, type, data, receive_timestamp, recording_timestamp)
   VALUES
-    (?, ?, ?, ?, ?, ?, ?);
+    (?, ?, ?, ?, ?, ?, ?, ?);
   """,
     id,
     date,
@@ -86,5 +90,6 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
     symbol,
     event.kind,
     event.toJson(),
+    receiveTimestamp.dbFmt,
     recordingTimestamp.dbFmt,
   )
