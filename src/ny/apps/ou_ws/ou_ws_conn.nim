@@ -2,16 +2,18 @@ import std/asyncdispatch
 import std/json
 import std/options
 import std/strutils
+import std/times
 
 import chronicles except toJson
 import jsony
 import ws as tf_ws
 
 import ny/core/trading/types
+import ny/core/utils/time_utils
 
 
 logScope:
-  topics = "ny-trade-conn"
+  topics = "ny-ou-ws"
 
 
 proc toString(str: seq[byte]): string =
@@ -20,15 +22,17 @@ proc toString(str: seq[byte]): string =
     add(result, ch.char)
 
 
-proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[WsOrderUpdate]] {.async.} =
+proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: WsOrderUpdate, receiveTs: DateTime]]] {.async.} =
   let rawPacket = if usesBinaryFrames:
     (await ws.receiveBinaryPacket()).toString()
   else:
     await ws.receiveStrPacket()
 
+  let receiveTimestamp = getNowUtc()
+
   # Skip heartbeats
   if rawPacket == "":
-    return none[WsOrderUpdate]()
+    return none[tuple[ou: WsOrderUpdate, receiveTs: DateTime]]()
 
   var packet = rawPacket.fromJson(WsOrderUpdate)
   packet.raw = rawPacket.parseJson
@@ -38,7 +42,7 @@ proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Opt
       if "symbol" in packet.raw["data"]["order"]:
         packet.symbol = packet.raw["data"]["order"]["symbol"].getStr()
 
-  return some packet
+  return some (packet, receiveTimestamp)
 
 
 proc initWebsocket*(baseUrl: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =

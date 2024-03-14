@@ -12,7 +12,7 @@ import nim_redis
 import ws
 
 import ny/apps/ou_ws/ou_ws_conn
-# import ny/core/db/mddb
+import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
 
@@ -66,14 +66,14 @@ proc main() {.raises: [].} =
           info "Got reply", reply=reply.get
 
           let symbol: string = block:
-            if reply.get.symbol != "":
-              reply.get.symbol
+            if reply.get.ou.symbol != "":
+              reply.get.ou.symbol
             else:
               warn "Failed to get symbol"
               continue
           
           let streamName = makeOuStreamName(today, symbol)
-          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson()])
+          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.get.ou.toJson(), "receive_timestamp", reply.get.receiveTs.dbFmt()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
           else:
