@@ -15,6 +15,8 @@ import ny/apps/ou_ws/ou_ws_conn
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
+import ny/core/utils/sim_utils
+import ny/core/utils/time_utils
 
 
 logScope:
@@ -43,7 +45,7 @@ proc main() {.raises: [].} =
       # dbInitialized = true
       # info "Market data db connected"
 
-      let today = now().getDateStr()
+      let today = getNowUtc().getDateStr()
 
       info "Starting redis ..."
       redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
@@ -58,7 +60,7 @@ proc main() {.raises: [].} =
       info "Running main loop ..."
       while true:
         # If we're on to the next day, reload the program to get the new config
-        if now().getDateStr() != today:
+        if getNowUtc().getDateStr() != today:
           break
 
         let reply = waitFor ws.receiveTradeUpdateReply(true)
@@ -73,6 +75,7 @@ proc main() {.raises: [].} =
               continue
           
           let streamName = makeOuStreamName(today, symbol)
+          info "Writing to stream", streamName
           let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.get.ou.toJson(), "receive_timestamp", reply.get.receiveTs.dbFmt()])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg

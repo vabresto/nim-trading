@@ -9,6 +9,7 @@ import db_connector/db_postgres
 import jsony
 
 import ny/core/md/alpaca/types
+import ny/core/md/alpaca/ou_types
 
 
 proc dbFmt*(dt: DateTime): string =
@@ -93,3 +94,47 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
     receiveTimestamp.dbFmt,
     recordingTimestamp.dbFmt,
   )
+
+
+proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
+  db.exec(sql"""
+  INSERT INTO ny.raw_order_updates
+    (
+      id, date, timestamp, symbol,
+      order_id, client_order_id,
+      event, side, size, price,
+      kind, tif,
+      data,
+      receive_timestamp, recording_timestamp)
+  VALUES
+    (
+      ?, ?, ?, ?,
+      ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?,
+      ?, ?
+    );
+  """,
+    id,
+    date,
+    ou.data.timestamp,
+    ou.symbol,
+
+    ou.data.order.id,
+    ou.data.order.clientOrderId,
+
+    ou.data.event,
+    ou.data.order.side,
+    ou.data.order.size,
+    ou.data.order.limitPrice,
+
+    ou.data.order.kind,
+    ou.data.order.tif,
+
+    ou.toJson(),
+    
+    receiveTimestamp.dbFmt,
+    recordingTimestamp.dbFmt,
+  )
+

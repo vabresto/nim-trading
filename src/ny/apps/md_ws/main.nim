@@ -22,7 +22,7 @@ import ny/core/utils/time_utils
 
 
 logScope:
-  topics = "ny-md-conn"
+  topics = "ny-md-ws"
 
 
 const kEventsProcessedHeartbeat = 5_000

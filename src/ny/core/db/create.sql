@@ -32,7 +32,7 @@ SELECT
   extract(epoch from recording_timestamp - receive_timestamp) as internal_time_sec,
   extract(epoch from (recording_timestamp - timestamp)) as total_time_sec
 FROM ny.raw_market_data
-WHERE type != 'BarMinute'
+WHERE type != 'BarMinute';
 
 
 create table if not exists ny.md_subscriptions (
@@ -49,4 +49,30 @@ create table if not exists ny.md_subscriptions (
   constraint md_subscriptions_test_feed_symbol check (
     (feed != 'test') or (feed = 'test' and symbol = 'FAKEPACA')
   )
+);
+
+
+create table if not exists ny.raw_order_updates (
+  id text not null,
+  date date not null,
+  timestamp timestamptz not null,
+  symbol text not null,
+
+  order_id text not null,
+  client_order_id text not null,
+
+  event text not null,
+  side text not null,
+  size text not null,
+  price text not null,
+
+  kind text not null,
+  tif text not null,
+  
+  data jsonb,
+
+  receive_timestamp timestamptz not null,
+  recording_timestamp timestamptz not null,
+
+  primary key(id, symbol)
 );

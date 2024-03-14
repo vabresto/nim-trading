@@ -150,9 +150,19 @@
         "sha1": "1718359cebdbb1c3f9ad250a7fb03cac1af4e1d1"
       }
     },
+    "ws": {
+      "version": "0.5.0",
+      "vcsRevision": "5ac521b72d7d4860fb394e5e1f9f08cf480e9822",
+      "url": "https://github.com/treeform/ws",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "fc2387f52ce71066276df07c72cd21b510bcdb30"
+      }
+    },
     "nim_redis": {
       "version": "0.3.0",
-      "vcsRevision": "f6e4962ac3e369a47afc75de8d3f52d148fb6436",
+      "vcsRevision": "164c331b71ce6b244cf645267589c457c3808607",
       "url": "ssh://git@github-personal/vabresto/nim-redis.git",
       "downloadMethod": "git",
       "dependencies": [
@@ -162,17 +172,7 @@
         "stew"
       ],
       "checksums": {
-        "sha1": "20e6931985bf6a987167cca9ac914b6cdab26e9a"
-      }
-    },
-    "ws": {
-      "version": "0.5.0",
-      "vcsRevision": "5ac521b72d7d4860fb394e5e1f9f08cf480e9822",
-      "url": "https://github.com/treeform/ws",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "fc2387f52ce71066276df07c72cd21b510bcdb30"
+        "sha1": "e5b801e61faf11f5d593e3124175405436457a0c"
       }
     },
     "jsony": {
