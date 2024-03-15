@@ -194,6 +194,16 @@
       "checksums": {
         "sha1": "f9aa61913b739de65d6106323d270639016a54ba"
       }
+    },
+    "threading": {
+      "version": "0.2.0",
+      "vcsRevision": "79195379ba682fc672690854ad4ec48c9362eb6f",
+      "url": "https://github.com/nim-lang/threading",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "803d3ded730a7ae2d5f32e4fb2e12e8a5073ca6d"
+      }
     }
   },
   "tasks": {}

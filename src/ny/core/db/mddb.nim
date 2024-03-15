@@ -1,3 +1,4 @@
+import std/json
 import std/net
 import std/options
 import std/os
@@ -6,7 +7,7 @@ import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
-import jsony
+# import jsony
 
 import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
@@ -66,7 +67,7 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
   return @[]
 
 
-proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
+proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, rawJson: JsonNode, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
   let timestamp = block:
     if event.getTimestamp.isNone:
       return
@@ -90,13 +91,13 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
     timestamp,
     symbol,
     event.kind,
-    event.toJson(),
+    rawJson,
     receiveTimestamp.dbFmt,
     recordingTimestamp.dbFmt,
   )
 
 
-proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
+proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, rawJson: JsonNode, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
   db.exec(sql"""
   INSERT INTO ny.raw_order_updates
     (
@@ -132,7 +133,7 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
     ou.data.order.kind,
     ou.data.order.tif,
 
-    ou.toJson(),
+    rawJson,
     
     receiveTimestamp.dbFmt,
     recordingTimestamp.dbFmt,

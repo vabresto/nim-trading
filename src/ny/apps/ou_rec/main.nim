@@ -2,6 +2,7 @@
 ## It subscribes to a redis stream, and forwards the data into a db
 
 import std/enumerate
+import std/json
 import std/net
 import std/options
 import std/os
@@ -15,7 +16,7 @@ import nim_redis
 
 import ny/core/db/mddb
 import ny/core/env/envs
-import ny/core/md/alpaca/types
+# import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
 import ny/core/md/utils
 import ny/core/utils/sim_utils
@@ -31,6 +32,7 @@ type
     stream: string
     id: string
     rawContents: RedisValue
+    rawJson: JsonNode
     ouReply: AlpacaOuWsReply
     recordingTimestamp: DateTime
 
@@ -54,6 +56,7 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
           if item.str == "data":
             dataIdx = curIdx + 1
             resp.ouReply = inner.arr[curIdx + 1].str.fromJson(AlpacaOuWsReply)
+            resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
           if item.str == "receive_timestamp":
             timestampIdx = curIdx + 1
             resp.recordingTimestamp = inner.arr[curIdx + 1].str.parseDbTs
@@ -66,6 +69,8 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
       return success resp
     of Null, Error, SimpleString, BulkString, Integer:
       return failure "Unable to parse non-array stream value: " & $val
+  except OSError, IOError:
+    return failure "Error parsing raw json: " & $val
   except ValueError:
     return failure "Error parsing as a stream response: " & $val
 
@@ -129,7 +134,7 @@ proc main() =
             if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
               let recordTs = getNowUtc()
               info "Got order update", ou=reply, recordTs
-              db.insertRawOuEvent(reply.id, today, reply.ouReply, reply.recordingTimestamp, recordTs)
+              db.insertRawOuEvent(reply.id, today, reply.ouReply, reply.rawJson, reply.recordingTimestamp, recordTs)
               inc numProcessed
 
               if numProcessed mod kEventsProcessedHeartbeat == 0:

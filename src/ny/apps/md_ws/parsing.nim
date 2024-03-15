@@ -1,5 +1,6 @@
 import std/json
 
+import chronicles except toJson
 import jsony
 
 import ny/core/md/alpaca/types
@@ -164,18 +165,18 @@ proc renameHook*(v: var TradingStatusDetails, fieldName: var string) =
 
 proc enumHook*(v: string, res: var AlpacaMdWsReplyKind) =
   case v:
-  of "error": res = AuthErr
-  of "success": res = ConnectOk
-  of "subscription": res = Subscription
-  of "t": res = Trade
-  of "q": res = Quote
-  of "b": res = BarMinute
-  of "d": res = BarDay
-  of "u": res = BarUpdated
-  of "c": res = TradeCorrection
-  of "x": res = TradeCancel
-  of "l": res = PriceBands
-  of "s": res = TradingStatus
+  of "error", "AuthErr": res = AuthErr
+  of "success", "ConnectOk": res = ConnectOk
+  of "subscription", "Subscription": res = Subscription
+  of "t", "Trade": res = Trade
+  of "q", "Quote": res = Quote
+  of "b", "BarMinute": res = BarMinute
+  of "d", "BarDay": res = BarDay
+  of "u", "BarUpdated": res = BarUpdated
+  of "c", "TradeCorrection": res = TradeCorrection
+  of "x", "TradeCancel": res = TradeCancel
+  of "l", "PriceBands": res = PriceBands
+  of "s", "TradingStatus": res = TradingStatus
   else: res = AuthErr
 
 
@@ -185,8 +186,15 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
   
   let kind = block:
     var kind: AlpacaMdWsReplyKind
-    enumHook(entry["T"].getStr, kind)
+    if "T" in entry:
+      enumHook(entry["T"].getStr, kind)
+    elif "kind" in entry:
+      enumHook(entry["kind"].getStr, kind)
+    else:
+      raise newException(KeyError, "Could not find discriminator fields T or kind!")
     kind
+
+  info "Got md kind", kind, entry
 
   if "msg" in entry and kind != AuthErr:
     if entry["msg"].getStr == "connected":
