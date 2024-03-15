@@ -36,7 +36,6 @@ type
     recordingTimestamp: DateTime
 
 
-
 const kEventsProcessedHeartbeat = 5
 
 
@@ -45,19 +44,15 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
   try:
     case val.kind
     of Array:
-      var dataIdx = 0
-      var timestampIdx = 0
-
       let inner = val.arr[0].arr[1].arr[0].arr[1]
       for curIdx, item in enumerate(inner.arr):
         case item.kind
         of SimpleString, BulkString:
-          if item.str == "data":
-            dataIdx = curIdx + 1
+          if item.str == "parsed_data":
             resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
+          if item.str == "raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
           if item.str == "receive_timestamp":
-            timestampIdx = curIdx + 1
             resp.recordingTimestamp = inner.arr[curIdx + 1].str.parseDbTs
         else:
           discard
@@ -130,13 +125,14 @@ proc main() =
             let reply = replyParseAttempt[]
             lastIds[reply.stream] = reply.id
 
-            if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
-              let recordTs = getNowUtc()
-              db.insertRawMdEvent(reply.id, today, reply.mdReply, reply.rawJson, reply.recordingTimestamp, recordTs)
-              inc numProcessed
+            # if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
+            let recordTs = getNowUtc()
+            # info "Hello", parsed=reply.mdReply, raw=reply.rawJson
+            db.insertRawMdEvent(reply.id, today, reply.mdReply, reply.rawJson, reply.recordingTimestamp, recordTs)
+            inc numProcessed
 
-              if numProcessed mod kEventsProcessedHeartbeat == 0:
-                info "Total events processed", numProcessed
+            if numProcessed mod kEventsProcessedHeartbeat == 0:
+              info "Total events processed", numProcessed
         else:
           warn "Error receiving", err=replyRaw.error.msg
 

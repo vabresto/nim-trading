@@ -7,7 +7,7 @@ import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
-# import jsony
+import jsony
 
 import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
@@ -70,30 +70,48 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
 proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, rawJson: JsonNode, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
   let timestamp = block:
     if event.getTimestamp.isNone:
+      error "No timestamp", event
       return
     else:
       event.getTimestamp.get
 
   let symbol = block:
     if event.getSymbol.isNone:
+      error "No symbol", event
       return
     else:
       event.getSymbol.get
 
   db.exec(sql"""
   INSERT INTO ny.raw_market_data
-    (id, date, timestamp, symbol, type, data, receive_timestamp, recording_timestamp)
+    (date, symbol, id, event_timestamp, receive_timestamp, recording_timestamp, type, raw_data)
   VALUES
     (?, ?, ?, ?, ?, ?, ?, ?);
   """,
-    id,
     date,
-    timestamp,
     symbol,
-    event.kind,
-    rawJson,
+    id,
+
+    timestamp,
     receiveTimestamp.dbFmt,
     recordingTimestamp.dbFmt,
+
+    event.kind,
+    rawJson,
+  )
+
+  db.exec(sql"""
+  INSERT INTO ny.parsed_market_data
+    (date, symbol, id, type, parsed_data)
+  VALUES
+    (?, ?, ?, ?, ?);
+  """,
+    date,
+    symbol,
+    id,
+
+    event.kind,
+    event.toJson(),
   )
 
 
@@ -101,26 +119,66 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
   db.exec(sql"""
   INSERT INTO ny.raw_order_updates
     (
-      id, date, timestamp, symbol,
+      date, symbol, id,
       order_id, client_order_id,
-      event, side, size, price,
-      kind, tif,
-      data,
-      receive_timestamp, recording_timestamp)
+      event_timestamp, receive_timestamp, recording_timestamp,
+      event_type, side, size, price,
+      order_type, tif,
+      raw_data
+      )
   VALUES
     (
+      ?, ?, ?,
+      ?, ?,
+      ?, ?, ?,
       ?, ?, ?, ?,
       ?, ?,
-      ?, ?, ?, ?,
-      ?, ?,
-      ?,
-      ?, ?
+      ?
     );
   """,
-    id,
     date,
-    ou.data.timestamp,
     ou.symbol,
+    id,
+
+    ou.data.order.id,
+    ou.data.order.clientOrderId,
+    
+    ou.data.timestamp,
+    receiveTimestamp.dbFmt,
+    recordingTimestamp.dbFmt,
+
+    ou.data.event,
+    ou.data.order.side,
+    ou.data.order.size,
+    ou.data.order.limitPrice,
+
+    ou.data.order.kind,
+    ou.data.order.tif,
+
+    rawJson,
+  )
+
+  db.exec(sql"""
+  INSERT INTO ny.parsed_order_updates
+    (
+      date, symbol, id,
+      order_id, client_order_id,
+      event_type, side, size, price,
+      order_type, tif,
+      parsed_data
+      )
+  VALUES
+    (
+      ?, ?, ?,
+      ?, ?,
+      ?, ?, ?, ?,
+      ?, ?,
+      ?
+    );
+  """,
+    date,
+    ou.symbol,
+    id,
 
     ou.data.order.id,
     ou.data.order.clientOrderId,
@@ -133,9 +191,6 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
     ou.data.order.kind,
     ou.data.order.tif,
 
-    rawJson,
-    
-    receiveTimestamp.dbFmt,
-    recordingTimestamp.dbFmt,
+    ou.data.toJson(),
   )
 

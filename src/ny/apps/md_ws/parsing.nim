@@ -183,6 +183,8 @@ proc enumHook*(v: string, res: var AlpacaMdWsReplyKind) =
 proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
   var entry: JsonNode
   parseHook(s, i, entry)
+
+  info "Trying to parse", s
   
   let kind = block:
     var kind: AlpacaMdWsReplyKind

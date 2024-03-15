@@ -2,6 +2,8 @@
 ## It subscribes to Alpaca's market data api, and passes the messages to a redis stream
 
 import std/asyncdispatch
+import std/enumerate
+import std/json
 import std/net
 import std/options
 import std/os
@@ -77,9 +79,9 @@ proc main() {.raises: [].} =
         if getNowUtc().getDateStr() != today:
           break
 
-        let (replies, receiveTs) = waitFor ws.receiveMdWsReply()
+        let replyBlock = waitFor ws.receiveMdWsReply()
 
-        for reply in replies:
+        for idx, reply in enumerate(replyBlock.parsedMd):
           let symbol = block:
             let symbol = reply.getSymbol()
             if symbol.isNone:
@@ -87,7 +89,13 @@ proc main() {.raises: [].} =
             symbol.get
           
           let streamName = makeMdStreamName(today, symbol)
-          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.toJson(), "receive_timestamp", receiveTs.dbFmt()])
+          let writeResult = redis.cmd(@[
+            "XADD", streamName, "*",
+            "parsed_data", reply.toJson(),
+            "raw_data", $(replyBlock.rawMd[idx]),
+            "receive_timestamp", replyBlock.receiveTs.dbFmt(),
+          ])
+
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
           else:

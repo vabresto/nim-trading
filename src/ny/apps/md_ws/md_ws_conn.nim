@@ -11,14 +11,27 @@ import ny/core/utils/time_utils
 
 export types
 
+type
+  MdWsReply* = object
+    receiveTs*: DateTime
+    parsedMd*: seq[AlpacaMdWsReply]
+    rawMd*: seq[JsonNode]
 
-proc receiveMdWsReply*(ws: WebSocket): Future[tuple[md: seq[AlpacaMdWsReply], receiveTs: DateTime]] {.async.} =
+
+proc receiveMdWsReply*(ws: WebSocket): Future[MdWsReply] {.async.} =
   let rawReply = await ws.receiveStrPacket()
   let receiveTimestamp = getNowUtc()
   if rawReply == "":
-    return (@[], receiveTimestamp)
+    return MdWsReply(receiveTs: receiveTimestamp, parsedMd: @[], rawMd: @[])
   let parsed = rawReply.fromJson(seq[AlpacaMdWsReply])
-  return (parsed, receiveTimestamp)
+  
+  let rawMd = block:
+    var rawMd = newSeq[JsonNode]()
+    for node in rawReply.parseJson():
+      rawMd.add node
+    rawMd
+
+  return MdWsReply(receiveTs: receiveTimestamp, parsedMd: parsed, rawMd: rawMd)
 
 
 proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
@@ -28,17 +41,17 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
 
   # Will raise if we fail to auth
   while true:
-    let (reply, _) = await socket.receiveMdWsReply()
-    if reply.len > 0:
-      if reply[0].kind == AlpacaMdWsReplyKind.ConnectOk:
+    let reply = await socket.receiveMdWsReply()
+    if reply.parsedMd.len > 0:
+      if reply.parsedMd[0].kind == AlpacaMdWsReplyKind.ConnectOk:
         # Got the message we wanted
         break
-      elif reply[0].kind == AlpacaMdWsReplyKind.AuthOk:
+      elif reply.parsedMd[0].kind == AlpacaMdWsReplyKind.AuthOk:
         # Unexpected but ok
         break
-      elif reply[0].kind == AlpacaMdWsReplyKind.AuthErr:
-        var authException = newException(AlpacaAuthError, reply[0].error.msg)
-        authException.code = reply[0].error.code
+      elif reply.parsedMd[0].kind == AlpacaMdWsReplyKind.AuthErr:
+        var authException = newException(AlpacaAuthError, reply.parsedMd[0].error.msg)
+        authException.code = reply.parsedMd[0].error.code
         raise authException
 
   # Next, send auth
@@ -51,17 +64,17 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
 
   # Wait for confirmation
   while true:
-    let (reply, _) = await socket.receiveMdWsReply()
-    if reply.len > 0:
-      if reply[0].kind == AlpacaMdWsReplyKind.ConnectOk:
+    let reply = await socket.receiveMdWsReply()
+    if reply.parsedMd.len > 0:
+      if reply.parsedMd[0].kind == AlpacaMdWsReplyKind.ConnectOk:
         # Unexpected but ok
         break
-      elif reply[0].kind == AlpacaMdWsReplyKind.AuthOk:
+      elif reply.parsedMd[0].kind == AlpacaMdWsReplyKind.AuthOk:
         # Got the message we wanted
         break
-      elif reply[0].kind == AlpacaMdWsReplyKind.AuthErr:
-        var authException = newException(AlpacaAuthError, reply[0].error.msg)
-        authException.code = reply[0].error.code
+      elif reply.parsedMd[0].kind == AlpacaMdWsReplyKind.AuthErr:
+        var authException = newException(AlpacaAuthError, reply.parsedMd[0].error.msg)
+        authException.code = reply.parsedMd[0].error.code
         raise authException
 
   # All set up, return the socket we created
