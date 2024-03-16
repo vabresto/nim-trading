@@ -204,6 +204,16 @@
       "checksums": {
         "sha1": "803d3ded730a7ae2d5f32e4fb2e12e8a5073ca6d"
       }
+    },
+    "fusion": {
+      "version": "1.2",
+      "vcsRevision": "562467452b32cb7a97410ea177f083e6d8405734",
+      "url": "https://github.com/nim-lang/fusion",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "af8413e23fc803311a2e706dc7b8d9b6f68c5de9"
+      }
     }
   },
   "tasks": {}

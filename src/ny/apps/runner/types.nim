@@ -1,3 +1,5 @@
+import ny/core/md/alpaca/types
+
 type
   MarketIoEffect* = object
 
@@ -7,7 +9,8 @@ type
     OrderUpdate
 
   TimerEvent* = object
-    at*: float # epoch float
+    # at*: float # epoch float
+    at*: string
 
   MarketDataEvent* = object
     symbol*: string
@@ -22,7 +25,8 @@ type
     of Timer:
       timer*: TimerEvent
     of MarketData:
-      md*: MarketDataEvent
+      # md*: MarketDataEvent
+      md*: AlpacaMdWsReply
     of OrderUpdate:
       ou*: OrderUpdateEvent
 

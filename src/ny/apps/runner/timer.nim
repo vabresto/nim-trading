@@ -32,15 +32,17 @@ proc timerThreadEx() {.thread, raises: [].} =
       of DoneTimer:
         discard
 
-    let curTime = epochTime()
-    while timers.len > 0 and timers[0].at <= curTime:
-      info "Ring ring", timer=timers[0]
-      try:
-        if not chan.trySend(TimerChanMsg(kind: DoneTimer, done: RespondTimer(timer: timers.pop()))):
-          error "Timer failed to ring!", curTime
-      except Exception:
-        # For =destroy hook
-        error "Failed to send timer ring down channel!"
+    # @next: need to figure out how to set this up properly, sometimes float is more convenient, other times string
+
+    # let curTime = epochTime()
+    # while timers.len > 0 and timers[0].at <= curTime:
+    #   info "Ring ring", timer=timers[0]
+    #   try:
+    #     if not chan.trySend(TimerChanMsg(kind: DoneTimer, done: RespondTimer(timer: timers.pop()))):
+    #       error "Timer failed to ring!", curTime
+    #   except Exception:
+    #     # For =destroy hook
+    #     error "Failed to send timer ring down channel!"
 
 
 proc createTimerThread*() =

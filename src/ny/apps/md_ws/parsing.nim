@@ -1,6 +1,5 @@
 import std/json
 
-import chronicles except toJson
 import jsony
 
 import ny/core/md/alpaca/types
@@ -184,8 +183,6 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
   var entry: JsonNode
   parseHook(s, i, entry)
 
-  info "Trying to parse", s
-  
   let kind = block:
     var kind: AlpacaMdWsReplyKind
     if "T" in entry:
@@ -195,8 +192,6 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
     else:
       raise newException(KeyError, "Could not find discriminator fields T or kind!")
     kind
-
-  info "Got md kind", kind, entry
 
   if "msg" in entry and kind != AuthErr:
     if entry["msg"].getStr == "connected":
