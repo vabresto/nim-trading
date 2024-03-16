@@ -10,12 +10,12 @@ import ny/apps/runner/sim_md
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
-import ny/apps/runner/strategy
 import ny/core/md/md_types
 import ny/apps/runner/types
 import ny/core/types/timestamp
 import ny/apps/runner/simulated/matching_engine
 import ny/apps/runner/types
+import ny/strategies/dummy/dummy_strat
 
 type
   Simulator* = object
@@ -140,7 +140,7 @@ proc simulate*(sim: var Simulator) =
   
   info "Init state ..."
   var matchingEngine = initSimMatchingEngine()
-  var strategyState = 0
+  var strategyState = initDummyStrategy()
 
   info "Running sim ..."
   for ev in eventItr(sim):
@@ -165,7 +165,7 @@ proc simulate*(sim: var Simulator) =
     of Timer, OrderUpdate:
       discard
 
-    let cmds = strategyState.executeStrategy(ev)
+    let cmds = strategyState.executeDummyStrategy(ev)
 
     for cmd in cmds:
       let resps = matchingEngine.onRequest(cmd)
