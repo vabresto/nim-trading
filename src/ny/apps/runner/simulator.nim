@@ -13,6 +13,7 @@ import ny/core/md/alpaca/types
 import ny/apps/runner/strategy
 import ny/core/md/md_types
 import ny/apps/runner/types
+import ny/core/types/timestamp
 
 type
   Simulator* = object
@@ -31,7 +32,7 @@ type
     bidPrice*: float
     askSize*: int
     bidSize*: int
-    timestamp*: string
+    timestamp*: Timestamp
     # quote condition, tape could also be relevant
     
 
@@ -196,15 +197,16 @@ proc simulate*(sim: var Simulator) =
 
   var nbbo = none[Nbbo]()
 
+  var curTime: Timestamp
   var strategyState = 0
   for ev in eventItr(sim):
     # info "Got event", ev
 
-    var curTime = ""
+    echo "CUR TIME: ", curTime
 
     # @next:
     # D wrap md events in a non-alpaca object
-    # - add a timestamp field to all response msg events (and move away from string type for it)
+    # D add a timestamp field to all response msg events (and move away from string type for it)
     # - move most of the below logic to the matching engine
     # - implement the actual matching engine logic
     # - might be ready to start implementing dummy strategies at that point?
@@ -246,7 +248,7 @@ proc simulate*(sim: var Simulator) =
           sim.scheduledOrderUpdates.push OrderUpdateEvent(
             orderId: "",
             clientOrderId: cmd.clientOrderId,
-            timestamp: "2024-03-15T03:15:48.300000000Z",
+            timestamp: "2024-03-15T03:15:48.300000000Z".parseTimestamp,
             kind: FilledPartial,
             fillAmt: 1,
           )
@@ -254,6 +256,6 @@ proc simulate*(sim: var Simulator) =
         sim.scheduledOrderUpdates.push OrderUpdateEvent(
           orderId: cmd.idToCancel,
           clientOrderId: "",
-          timestamp: "2024-03-15T03:15:49.300000000Z",
+          timestamp: "2024-03-15T03:15:49.300000000Z".parseTimestamp,
           kind: Cancelled,
         )

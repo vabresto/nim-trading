@@ -1,6 +1,7 @@
 import ny/core/md/alpaca/types
 import ny/core/trading/enums/side
 import ny/core/md/md_types
+import ny/core/types/timestamp
 
 type
   MarketIoEffect* = object
@@ -12,7 +13,7 @@ type
 
   TimerEvent* = object
     # at*: float # epoch float
-    at*: string
+    at*: Timestamp
 
   # MarketDataEvent* = object
   #   symbol*: string
@@ -28,7 +29,7 @@ type
   OrderUpdateEvent* = object
     orderId*: string
     clientOrderId*: string
-    timestamp*: string
+    timestamp*: Timestamp
     case kind*: OrderUpdateKind
     of FilledPartial, FilledFull:
       fillAmt*: int
@@ -65,7 +66,7 @@ type
       idToCancel*: string
 
 
-func timestamp*(rsp: ResponseMessage): string =
+func timestamp*(rsp: ResponseMessage): Timestamp =
   case rsp.kind
   of Timer:
     rsp.timer.at

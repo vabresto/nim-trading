@@ -1,6 +1,7 @@
 # import std/times
 
 import ny/apps/runner/types
+import ny/core/types/timestamp
 
 
 type

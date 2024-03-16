@@ -1,3 +1,5 @@
+import ny/core/types/timestamp
+
 type
   MarketDataUpdateKind* = enum
     Quote
@@ -9,7 +11,7 @@ type
     Other
   
   MarketDataUpdate* = object
-    timestamp*: string
+    timestamp*: Timestamp
     case kind*: MarketDataUpdateKind
     of Quote:
       askPrice*: float

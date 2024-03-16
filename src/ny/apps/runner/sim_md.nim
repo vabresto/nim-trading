@@ -8,6 +8,7 @@ import ny/apps/md_ws/parsing
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
 import ny/core/md/alpaca/parsing
+import ny/core/types/timestamp
 
 
 proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =
@@ -26,7 +27,7 @@ proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto
       case alpacaMd.kind
       of Quote:
         yield some MarketDataUpdate(
-          timestamp: alpacaMd.quote.timestamp,
+          timestamp: alpacaMd.quote.timestamp.parseTimestamp,
           kind: Quote,
           askPrice: alpacaMd.quote.askPrice,
           askSize: alpacaMd.quote.askSize,
@@ -35,7 +36,7 @@ proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto
         )
       of TradingStatus:
         yield some MarketDataUpdate(
-          timestamp: alpacaMd.tradingStatus.timestamp,
+          timestamp: alpacaMd.tradingStatus.timestamp.parseTimestamp,
           kind: Status,
           status: alpacaMd.tradingStatus.statusCode.parseAlpacaMdTradingStatus,
         )
