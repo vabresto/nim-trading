@@ -32,13 +32,21 @@ func `*`*(a: Price, b: int): Price =
   let allCents = (a.dollars * 100 + a.cents) * b
   Price(dollars: floorDiv(allCents, 100), cents: floorMod(allCents, 100))
 
-func fromFloat*(price: float): Price =
+func parsePrice*(price: float): Price {.raises: [].} =
   let allCents = (price * 100).int
   Price(dollars: floorDiv(allCents, 100), cents: floorMod(allCents, 100))
 
-func fromString*(price: string): Price =
+func parsePrice*(price: string): Price {.raises: [].} =
+  const kErrPrice = Price(dollars: -1, cents: 0)
+
   if "." in price:
     let splitted = price.split(".")
-    Price(dollars: splitted[0].parseInt, cents: splitted[1].parseInt)
+    try:
+      Price(dollars: splitted[0].parseInt, cents: splitted[1].parseInt)
+    except ValueError:
+      kErrPrice
   else:
-    Price(dollars: price.parseInt, cents: 0)
+    try:
+      Price(dollars: price.parseInt, cents: 0)
+    except ValueError:
+      kErrPrice

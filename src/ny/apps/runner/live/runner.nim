@@ -3,16 +3,15 @@ import threading/channels
 import std/isolation
 
 import ny/apps/runner/live/chans
-import ny/apps/runner/types
-# import ny/apps/runner/strategy
 import ny/strategies/dummy/dummy_strat
+import ny/core/types/strategy_base
 
 type
   RunnerThreadArgs* = object
     symbol*: string
 
 
-proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [], forbids: [MarketIoEffect].} =
+proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
   let (ic, oc) = block:
     try:
       {.gcsafe.}:
@@ -25,7 +24,7 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [], forbids: [Ma
 
   while true:
     let msg = block:
-      var msg: ResponseMessage
+      var msg: InputEvent
       if not ic.tryRecv(msg):
         continue
       msg

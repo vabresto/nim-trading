@@ -5,18 +5,18 @@ import chronicles
 import threading/channels
 
 import ny/apps/runner/timer_types
-import ny/apps/runner/types
+import ny/core/types/strategy_base
 
 
-var gChannels = initTable[string, tuple[ic: Chan[ResponseMessage], oc: Chan[RequestMessage]]]()
+var gChannels = initTable[string, tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]]]()
 var gTimerChan = none[Chan[TimerChanMsg]]()
 
 
 proc initChannelsForSymbol*(symbol: string) =
-  gChannels[symbol] = (ic: newChan[ResponseMessage](), oc: newChan[RequestMessage]())
+  gChannels[symbol] = (ic: newChan[InputEvent](), oc: newChan[OutputEvent]())
 
 
-proc getChannelsForSymbol*(symbol: string): tuple[ic: Chan[ResponseMessage], oc: Chan[RequestMessage]] =
+proc getChannelsForSymbol*(symbol: string): tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]] =
   if symbol notin gChannels:
     initChannelsForSymbol(symbol)
   

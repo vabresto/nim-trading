@@ -11,11 +11,10 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
-import ny/apps/runner/types
 import ny/core/types/timestamp
 import ny/apps/runner/simulated/matching_engine
-import ny/apps/runner/types
 import ny/strategies/dummy/dummy_strat
+import ny/core/types/strategy_base
 
 type
   Simulator* = object
@@ -23,14 +22,14 @@ type
 
     curTime: float
     timers: HeapQueue[TimerEvent]
-    scheduledOrderUpdates: HeapQueue[OrderUpdateEvent]
+    scheduledOrderUpdates: HeapQueue[SysOrderUpdateEvent]
 
     timerItr: iterator(sim: var Simulator): Option[TimerEvent]{.closure, gcsafe.}
     mdItr: iterator(): Option[MarketDataUpdate]{.closure, gcsafe.}
-    ouItr: iterator(sim: var Simulator): Option[OrderUpdateEvent]{.closure, gcsafe.}
+    ouItr: iterator(sim: var Simulator): Option[SysOrderUpdateEvent]{.closure, gcsafe.}
 
 
-proc `<`(a, b: OrderUpdateEvent): bool = a.timestamp < b.timestamp
+proc `<`(a, b: SysOrderUpdateEvent): bool = a.timestamp < b.timestamp
 
 proc createEmptyTimerIterator(): auto =
   (iterator(sim: var Simulator): Option[TimerEvent] {.closure, gcsafe.} =
@@ -44,12 +43,12 @@ proc createEmptyTimerIterator(): auto =
   )
 
 proc createEmptyOrderUpdateIterator(): auto =
-  (iterator(sim: var Simulator): Option[OrderUpdateEvent] {.closure, gcsafe.} =
+  (iterator(sim: var Simulator): Option[SysOrderUpdateEvent] {.closure, gcsafe.} =
     while true:
       let res = if sim.scheduledOrderUpdates.len > 0:
         some sim.scheduledOrderUpdates.pop()
       else:
-        none[OrderUpdateEvent]()
+        none[SysOrderUpdateEvent]()
       yield res
     error "End of order update iterator?"
   )
@@ -77,7 +76,7 @@ proc getNextMarketDataEvent(sim: Simulator): Option[MarketDataUpdate] =
   else:
     none[MarketDataUpdate]()
 
-proc getNextOrderUpdateEvent(sim: var Simulator): Option[OrderUpdateEvent] =
+proc getNextOrderUpdateEvent(sim: var Simulator): Option[SysOrderUpdateEvent] =
   sim.ouItr(sim)
 
 proc addTimer*(sim: var Simulator, timer: TimerEvent) =
@@ -85,7 +84,7 @@ proc addTimer*(sim: var Simulator, timer: TimerEvent) =
 
 
 proc createEventIterator*(): auto =
-  (iterator(sim: var Simulator): ResponseMessage =
+  (iterator(sim: var Simulator): InputEvent =
     var nextTimerEvent = sim.getNextTimerEvent()
     var nextMdEvent = sim.getNextMarketDataEvent()
     var nextOuEvent = sim.getNextOrderUpdateEvent()
@@ -112,23 +111,23 @@ proc createEventIterator*(): auto =
 
       var timestamps = newSeq[Timestamp]()
       if nextTimerEvent.isSome:
-        timestamps.add nextTimerEvent.get.at
+        timestamps.add nextTimerEvent.get.timestamp
       if nextMdEvent.isSome:
         timestamps.add nextMdEvent.get.timestamp
       if nextOuEvent.isSome:
         timestamps.add nextOuEvent.get.timestamp
 
       let nextEvTimestamp = min(timestamps)
-      if nextTimerEvent.isSome and nextTimerEvent.get.at == nextEvTimestamp:
-        yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
+      if nextTimerEvent.isSome and nextTimerEvent.get.timestamp == nextEvTimestamp:
+        yield InputEvent(kind: Timer, timer: nextTimerEvent.get)
         nextTimerEvent = sim.getNextTimerEvent()
 
       if nextMdEvent.isSome and nextMdEvent.get.timestamp == nextEvTimestamp:
-        yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
+        yield InputEvent(kind: MarketData, md: nextMdEvent.get)
         nextMdEvent = sim.getNextMarketDataEvent()
 
       if nextOuEvent.isSome and nextOuEvent.get.timestamp == nextEvTimestamp:
-        yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
+        yield InputEvent(kind: OrderUpdate, ou: nextOuEvent.get)
         nextOuEvent = sim.getNextOrderUpdateEvent()
     info "Done event loop"
   )

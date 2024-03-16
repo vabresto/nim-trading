@@ -1,6 +1,4 @@
-# import std/times
-
-import ny/apps/runner/types
+import ny/core/types/strategy_base
 import ny/core/types/timestamp
 
 
@@ -23,4 +21,4 @@ type
       done*: RespondTimer
   
 
-proc `<`*(a, b: TimerEvent): bool = a.at < b.at
+proc `<`*(a, b: TimerEvent): bool = a.timestamp < b.timestamp

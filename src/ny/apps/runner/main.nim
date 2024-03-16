@@ -10,12 +10,12 @@ import ny/apps/runner/simulated/market_data
 # import ny/apps/runner/strategy
 import ny/apps/runner/live/timer # used
 import ny/apps/runner/timer_types
-import ny/apps/runner/types
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/apps/runner/simulated/runner as sim_runner
 import ny/core/md/alpaca/types
 import ny/apps/runner/live/runner as live_runner
+import ny/core/types/strategy_base
 
 
 proc main(simulated: bool) =
@@ -38,9 +38,9 @@ proc main(simulated: bool) =
       info "Sending message"
       let (ic, oc) = getChannelsForSymbol(symbol)
       let tc = getTimerChannel()
-      ic.send(ResponseMessage(kind: Timer))
+      ic.send(InputEvent(kind: Timer))
 
-      var resp: RequestMessage
+      var resp: OutputEvent
       oc.recv(resp)
       info "Main got", resp
 

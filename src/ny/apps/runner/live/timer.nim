@@ -10,9 +10,8 @@ import threading/channels
 
 import ny/apps/runner/live/chans
 import ny/apps/runner/timer_types
-import ny/apps/runner/types
 # import ny/core/utils/time_utils
-
+import ny/core/types/strategy_base
 
 var timerThread: Thread[void]
 var timerThreadCreated = false

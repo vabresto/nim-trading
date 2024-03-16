@@ -10,8 +10,8 @@ import ny/core/types/side
 
 type
   OrdersBook* = object
-    byId*: Table[string, SysOrderRef]
-    byClientId*: Table[string, SysOrderRef]
+    byId*: Table[OrderId, SysOrderRef]
+    byClientId*: Table[ClientOrderId, SysOrderRef]
     byPrice*: Table[SysSideKind, Table[Price, HashSet[SysOrderRef]]]
 
 
@@ -34,10 +34,10 @@ proc addOrder*(book: var OrdersBook, order: SysOrder) =
 
 
 proc getOrder*(book: OrdersBook, id: string): Option[SysOrderRef] =
-  if id in book.byId:
-    some book.byId[id]
-  elif id in book.byClientId:
-    some book.byClientId[id]
+  if id.OrderId in book.byId:
+    some book.byId[id.OrderId]
+  elif id.ClientOrderId in book.byClientId:
+    some book.byClientId[id.ClientOrderId]
   else:
     none[SysOrderRef]()
 
