@@ -8,7 +8,7 @@ func executeStrategy*(state: var int, update: ResponseMessage): seq[RequestMessa
   of MarketData:
     if state == 0:
       state = 1
-      return @[RequestMessage(kind: Timer, timer: TimerEvent(at: "123"))]
+      return @[RequestMessage(kind: Timer, timer: TimerEvent(at: "2024-03-15T03:15:48.561750000Z"))]
     discard
   of OrderUpdate:
     discard

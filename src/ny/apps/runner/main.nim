@@ -56,7 +56,7 @@ proc main() =
     for ev in eventItr(sim):
       info "Got event", ev
       let cmds = state.executeStrategy(ev)
-      info "Got replies", cmds
+      # info "Got replies", cmds
       for cmd in cmds:
         case cmd.kind
         of Timer:

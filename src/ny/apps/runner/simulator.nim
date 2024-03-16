@@ -29,7 +29,7 @@ proc createEmptyTimerIterator(): auto =
   (iterator(sim: var Simulator): Option[TimerEvent] {.closure, gcsafe.} =
     # info "Sim", sim
     while true:
-      info "Popping timer"
+      # info "Popping timer"
       let res = if sim.timers.len > 0:
         some sim.timers.pop()
       else:
@@ -74,7 +74,7 @@ proc getNextOrderUpdateEvent(sim: Simulator): Option[OrderUpdateEvent] =
 
 
 proc addTimer*(sim: var Simulator, timer: TimerEvent) =
-  info "Pushing timer"
+  # info "Pushing timer"
   sim.timers.push timer
 
 
@@ -99,7 +99,7 @@ proc createEventIterator*(): auto =
       let discriminator = (nextTimerEvent, nextMdEvent, nextOuEvent)
       # info "Looking", discriminator
 
-      info "Simulator", sim, discriminator
+      # info "Simulator", sim, discriminator
 
       case discriminator:
 
@@ -132,13 +132,11 @@ proc createEventIterator*(): auto =
       # 
       of (Some(@timeEv), Some(@mdEv), None()):
         if mdEv.getTimestamp.isNone or timeEv.at < mdEv.getTimestamp.get:
-          info "Returning timer event by elimination (1)"
-          # yield nextTimerEvent.get
+          # info "Returning timer event by elimination (1)"
           yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
           nextTimerEvent = sim.getNextTimerEvent()
         else:
-          info "Returning market data event by elimination"
-          # yield nextMdEvent.get
+          # info "Returning market data event by elimination"
           yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
           nextMdEvent = sim.getNextMarketDataEvent()
       
