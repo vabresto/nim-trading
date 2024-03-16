@@ -1,4 +1,5 @@
 import std/json
+import std/hashes
 
 import jsony
 
@@ -30,6 +31,8 @@ type
     clientOrderId*: string = ""
     # Several fields missing here
 
+  OrderRef* = ref Order
+
   OrderCreateResponse* = object
     id*: string
     clientOrderId*: string
@@ -47,6 +50,10 @@ type
     # Added after the fact
     symbol*: string
     raw*: JsonNode
+
+
+func `$`*(order: OrderRef): string = $(order[])
+func hash*(order: OrderRef): Hash = hash(order[])
 
 
 func makeMarketOrder*(symbol: string, side: SideKind, quantity: float, clientOrderId: string): Order =

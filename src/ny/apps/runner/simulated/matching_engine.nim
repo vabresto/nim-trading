@@ -5,19 +5,26 @@
 ## - If a limit order comes in at a worse price than current nbbo, we have to hold on to it
 ## - If an order is fillable, we will replicate Alpaca's random 10% fill rate (we can seed the RNG off of the quote's timestamp for reproduciability)
 
+import std/options
 import std/random
 import std/times
+
+import chronicles
 
 import ny/core/types/nbbo
 import ny/core/types/timestamp
 import ny/core/md/md_types
 import ny/apps/runner/types
+import ny/core/orders/book
+import ny/core/trading/types
 
 type
   SimMatchingEngine* = object
     curTime*: Timestamp
     nbbo*: Nbbo
     status*: MarketDataStatusUpdateKind
+    book*: OrdersBook
+    orderCount*: int = 1
 
 proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate) =
   me.curTime = ev.timestamp
@@ -45,28 +52,49 @@ proc onRequest*(me: var SimMatchingEngine, msg: RequestMessage): seq[OrderUpdate
   of Timer:
     return @[]
   of OrderSend:
-    # Send new; for now, we'll reuse timestamp to make life easier
+    let orderLookup = me.book.getOrder(msg.clientOrderId)
+    if orderLookup.isSome:
+      warn "Reject due to duplicated client order id", clientId=msg.clientOrderId
+      return
+
+    let exchId = "sim:o:" & $me.orderCount
+    inc me.orderCount
+
+    me.book.addOrder Order(
+      id: exchId,
+      clientOrderId: msg.clientOrderId,
+      symbol: "SIM",
+      side: msg.side,
+      size: $msg.quantity,
+      kind: Limit,
+      tif: Day,
+      limitPrice: msg.price,
+    )
+
     result.add OrderUpdateEvent(
-      orderId: "",
+      orderId: exchId,
       clientOrderId: msg.clientOrderId,
       timestamp: me.curTime + me.makeJitter(),
       kind: New,
     )
     # First order we fill, second we let strategy cancel
     if msg.clientOrderId == "order-1":
+      discard me.book.removeOrder(msg.clientOrderId)
+
       result.add OrderUpdateEvent(
-        orderId: "",
+        orderId: exchId,
         clientOrderId: msg.clientOrderId,
         timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
         kind: FilledPartial,
         fillAmt: 1,
       )
   of OrderCancel:
-    result.add OrderUpdateEvent(
-      orderId: msg.idToCancel,
-      clientOrderId: "",
-      timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
-      kind: Cancelled,
-    )
-    discard
-  discard
+    let order = me.book.removeOrder(msg.idToCancel)
+
+    if order.isSome:
+      result.add OrderUpdateEvent(
+        orderId: msg.idToCancel,
+        clientOrderId: order.get.clientOrderId,
+        timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+        kind: Cancelled,
+      )
