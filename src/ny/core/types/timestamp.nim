@@ -8,12 +8,25 @@ type
 
 const tsStringFormat* = "yyyy-MM-dd'T'hh:mm:ss'.'fffffffffzzz"
 
-proc toTime*(ts: Timestamp): Time {.noSideEffect.} =
+func toTime*(ts: Timestamp): Time {.noSideEffect.} =
   initTime(ts.epoch, ts.nanos)
+
+func fromTime*(time: Time): Timestamp {.noSideEffect.} =
+  Timestamp(epoch: time.toUnix, nanos: time.nanosecond)
 
 proc toDateTime*(ts: Timestamp): DateTime {.noSideEffect.} =
   {.noSideEffect.}:
     ts.toTime().inZone(local())
+
+func `+`*(ts: Timestamp, dur: Duration): Timestamp {.noSideEffect.} =
+  var time =ts.toTime
+  time += dur
+  fromTime(time)
+
+func `-`*(ts: Timestamp, dur: Duration): Timestamp {.noSideEffect.} =
+  var time =ts.toTime
+  time -= dur
+  fromTime(time)
 
 func `$`*(ts: Timestamp): string =
   ts.toDateTime.format(tsStringFormat)

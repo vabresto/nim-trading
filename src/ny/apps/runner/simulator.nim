@@ -14,6 +14,8 @@ import ny/apps/runner/strategy
 import ny/core/md/md_types
 import ny/apps/runner/types
 import ny/core/types/timestamp
+import ny/core/types/nbbo
+import ny/apps/runner/simulated/matching_engine
 
 type
   Simulator* = object
@@ -27,14 +29,6 @@ type
     mdItr: iterator(): Option[MarketDataUpdate]{.closure, gcsafe.}
     ouItr: iterator(sim: var Simulator): Option[OrderUpdateEvent]{.closure, gcsafe.}
 
-  Nbbo* = object
-    askPrice*: float
-    bidPrice*: float
-    askSize*: int
-    bidSize*: int
-    timestamp*: Timestamp
-    # quote condition, tape could also be relevant
-    
 
 proc `<`(a, b: OrderUpdateEvent): bool = a.timestamp < b.timestamp
 
@@ -87,11 +81,9 @@ proc getNextOrderUpdateEvent(sim: var Simulator): Option[OrderUpdateEvent] =
   sim.ouItr(sim)
 
 proc addTimer*(sim: var Simulator, timer: TimerEvent) =
-  # info "Pushing timer"
   sim.timers.push timer
 
 
-{.experimental: "caseStmtMacros".}
 proc createEventIterator*(): auto =
   (iterator(sim: var Simulator): ResponseMessage =
     var nextTimerEvent = sim.getNextTimerEvent()
@@ -108,104 +100,55 @@ proc createEventIterator*(): auto =
 
       if nextTimerEvent.isNone:
         nextTimerEvent = sim.getNextTimerEvent()
+      if nextMdEvent.isNone:
+        nextMdEvent = sim.getNextMarketDataEvent()
       if nextOuEvent.isNone:
         nextOuEvent = sim.getNextOrderUpdateEvent()
 
-      let discriminator = (nextTimerEvent, nextMdEvent, nextOuEvent)
-      # info "Looking", discriminator
-
-      # info "Simulator", sim, discriminator
-
-      case discriminator:
-
-      # 
-      # All null
-      # 
-      of (None(), None(), None()):
+      if nextTimerEvent.isNone and nextMdEvent.isNone and nextOuEvent.isNone:
         info "Done iterating events"
         doneLooping = true
         continue
 
-      # 
-      # Single non-null
-      # 
-      of (Some(@timeEv), None(), None()):
-        # info "Returning timer event by elimination"
+      var timestamps = newSeq[Timestamp]()
+      if nextTimerEvent.isSome:
+        timestamps.add nextTimerEvent.get.at
+      if nextMdEvent.isSome:
+        timestamps.add nextMdEvent.get.timestamp
+      if nextOuEvent.isSome:
+        timestamps.add nextOuEvent.get.timestamp
+
+      let nextEvTimestamp = min(timestamps)
+      if nextTimerEvent.isSome and nextTimerEvent.get.at == nextEvTimestamp:
         yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
         nextTimerEvent = sim.getNextTimerEvent()
-      of (None(), Some(@mdEv), None()):
-        # info "Returning market data event by elimination"
+
+      if nextMdEvent.isSome and nextMdEvent.get.timestamp == nextEvTimestamp:
         yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
         nextMdEvent = sim.getNextMarketDataEvent()
-      of (None(), None(), Some(@ouEv)):
-        # info "Returning order update event by elimination"
+
+      if nextOuEvent.isSome and nextOuEvent.get.timestamp == nextEvTimestamp:
         yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
         nextOuEvent = sim.getNextOrderUpdateEvent()
-      
-      # 
-      # Two non-nulls
-      # 
-      of (Some(@timeEv), Some(@mdEv), None()):
-        if timeEv.at < mdEv.timestamp:
-          yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
-          nextTimerEvent = sim.getNextTimerEvent()
-        else:
-          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
-          nextMdEvent = sim.getNextMarketDataEvent()
-      
-      of (None(), Some(@mdEv), Some(@ouEv)):
-        if ouEv.timestamp < mdEv.timestamp:
-          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
-          nextOuEvent = sim.getNextOrderUpdateEvent()
-        else:
-          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
-          nextMdEvent = sim.getNextMarketDataEvent()
-
-      of (Some(@timeEv), None(), Some(@ouEv)):
-        if timeEv.at < ouEv.timestamp:
-          yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
-          nextTimerEvent = sim.getNextTimerEvent()
-        else:
-          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
-          nextOuEvent = sim.getNextOrderUpdateEvent()
-
-      # 
-      # All non-null
-      # 
-      of (Some(@timeEv), Some(@mdEv), Some(@ouEv)):
-        let next = min([timeEv.at, ouEv.timestamp, mdEv.timestamp])
-        if next == timeEv.at:
-          yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
-          nextTimerEvent = sim.getNextTimerEvent()
-        elif next == ouEv.timestamp:
-          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
-          nextOuEvent = sim.getNextOrderUpdateEvent()
-        else:
-          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
-          nextMdEvent = sim.getNextMarketDataEvent()
-        discard
-      discard
-
-    discard
+    info "Done event loop"
   )
 
 
 proc simulate*(sim: var Simulator) =
   info "Creating event iterator ..."
   let eventItr = createEventIterator()
-  info "Running sim ..."
-
-  var nbbo = none[Nbbo]()
-
-  var curTime: Timestamp
+  
+  info "Init state ..."
+  var matchingEngine = SimMatchingEngine()
   var strategyState = 0
+
+  info "Running sim ..."
   for ev in eventItr(sim):
-    # info "Got event", ev
 
     # @next:
     # D wrap md events in a non-alpaca object
     # D add a timestamp field to all response msg events (and move away from string type for it)
-    # - move most of the below logic to the matching engine
+    # D move most of the below logic to the matching engine
     # - implement the actual matching engine logic
     # - might be ready to start implementing dummy strategies at that point?
 
@@ -213,47 +156,15 @@ proc simulate*(sim: var Simulator) =
     of MarketData:
       case ev.md.kind
       of Quote:
-        nbbo = some Nbbo(
-          askPrice: ev.md.askPrice,
-          bidPrice: ev.md.bidPrice,
-          askSize: ev.md.askSize,
-          bidSize: ev.md.bidSize,
-          timestamp: ev.md.timestamp,
-        )
-        curTime = ev.md.timestamp
-        # info "Got quote", nbbo
+        matchingEngine.onMarketDataEvent(ev.md)
       else:
         discard
     of Timer, OrderUpdate:
       discard
 
     let cmds = strategyState.executeStrategy(ev)
-    # info "Got replies", cmds
+
     for cmd in cmds:
-      case cmd.kind
-      of Timer:
-        sim.addTimer(cmd.timer)
-      of OrderSend:
-        # Send new; for now, we'll reuse timestamp to make life easier
-        sim.scheduledOrderUpdates.push OrderUpdateEvent(
-          orderId: "",
-          clientOrderId: cmd.clientOrderId,
-          timestamp: curTime,
-          kind: New,
-        )
-        # First order we fill, second we let strategy cancel
-        if cmd.clientOrderId == "order-1":
-          sim.scheduledOrderUpdates.push OrderUpdateEvent(
-            orderId: "",
-            clientOrderId: cmd.clientOrderId,
-            timestamp: "2024-03-15T03:15:48.300000000Z".parseTimestamp,
-            kind: FilledPartial,
-            fillAmt: 1,
-          )
-      of OrderCancel:
-        sim.scheduledOrderUpdates.push OrderUpdateEvent(
-          orderId: cmd.idToCancel,
-          clientOrderId: "",
-          timestamp: "2024-03-15T03:15:49.300000000Z".parseTimestamp,
-          kind: Cancelled,
-        )
+      let resps = matchingEngine.onRequest(cmd)
+      for resp in resps:
+        sim.scheduledOrderUpdates.push resp
