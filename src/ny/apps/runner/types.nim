@@ -59,7 +59,7 @@ type
     of OrderSend:
       # For now, only support sending day limit and market orders
       clientOrderId*: string
-      side*: SideKind
+      side*: AlpacaSideKind
       quantity*: int
       price*: string
     of OrderCancel:

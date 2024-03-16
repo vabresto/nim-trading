@@ -1,0 +1,3 @@
+type
+  TifKind* = enum
+    Day

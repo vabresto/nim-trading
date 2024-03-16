@@ -157,7 +157,9 @@ proc simulate*(sim: var Simulator) =
     of MarketData:
       case ev.md.kind
       of Quote:
-        matchingEngine.onMarketDataEvent(ev.md)
+        let resps = matchingEngine.onMarketDataEvent(ev.md)
+        for resp in resps:
+          sim.scheduledOrderUpdates.push resp
       else:
         discard
     of Timer, OrderUpdate:

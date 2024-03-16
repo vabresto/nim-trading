@@ -1,13 +1,14 @@
 import jsony
 
+import ny/core/types/side
 
 type
-  SideKind* = enum
+  AlpacaSideKind* = enum
     Buy
     Sell
 
 
-proc dumpHook*(s: var string, v: SideKind) =
+proc dumpHook*(s: var string, v: AlpacaSideKind) =
   case v
   of Buy:
     s.add "buy"
@@ -15,15 +16,23 @@ proc dumpHook*(s: var string, v: SideKind) =
     s.add "sell"
 
 
-proc enumHook*(v: string): SideKind =
+proc enumHook*(v: string): AlpacaSideKind =
   case v:
   of "buy": Buy
   of "sell": Sell
   else:
-    raise newException(ValueError, "Can't parse SideKind: " & v)
+    raise newException(ValueError, "Can't parse AlpacaSideKind: " & v)
 
 
-proc parseHook*(s: string, i: var int, v: var SideKind) =
+proc parseHook*(s: string, i: var int, v: var AlpacaSideKind) =
   var parsed: string
   parseHook(s, i, parsed)
   v = enumHook(parsed)
+
+
+proc toSysSide*(s: AlpacaSideKind): SysSideKind =
+  case s
+  of Buy:
+    SysSideKind.Buy
+  of Sell:
+    SysSideKind.Sell

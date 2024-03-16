@@ -1,0 +1,3 @@
+type
+  OrderKind* = enum
+    Limit

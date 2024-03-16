@@ -16,9 +16,9 @@ type
   AlpacaOrder* = object
     id*: string = "" # set by the remote
     symbol*: string
-    side*: SideKind
-    kind*: OrderKind
-    tif*: TifKind
+    side*: AlpacaSideKind
+    kind*: AlpacaOrderKind
+    tif*: AlpacaTifKind
 
     size*: string = ""
     notional*: string = ""
@@ -57,7 +57,7 @@ func `$`*(order: AlpacaOrderRef): string = $(order[])
 func hash*(order: AlpacaOrderRef): Hash = hash(order[])
 
 
-func makeMarketOrder*(symbol: string, side: SideKind, quantity: float, clientOrderId: string): AlpacaOrder =
+func makeMarketOrder*(symbol: string, side: AlpacaSideKind, quantity: float, clientOrderId: string): AlpacaOrder =
   ## Fractional quantities require Market + Day
   AlpacaOrder(
     symbol: symbol,
@@ -70,7 +70,7 @@ func makeMarketOrder*(symbol: string, side: SideKind, quantity: float, clientOrd
   )
 
 
-func makeMarketOrder*(symbol: string, side: SideKind, notional: int, clientOrderId: string): AlpacaOrder =
+func makeMarketOrder*(symbol: string, side: AlpacaSideKind, notional: int, clientOrderId: string): AlpacaOrder =
   ## Notional-based orders require Market + Day
   AlpacaOrder(
     symbol: symbol,
@@ -83,7 +83,7 @@ func makeMarketOrder*(symbol: string, side: SideKind, notional: int, clientOrder
   )
 
 
-func makeMarketOnOpenOrder*(symbol: string, side: SideKind, quantity: int, clientOrderId: string): AlpacaOrder =
+func makeMarketOnOpenOrder*(symbol: string, side: AlpacaSideKind, quantity: int, clientOrderId: string): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,
@@ -95,7 +95,7 @@ func makeMarketOnOpenOrder*(symbol: string, side: SideKind, quantity: int, clien
   )
 
 
-func makeMarketOnCloseOrder*(symbol: string, side: SideKind, quantity: int, clientOrderId: string): AlpacaOrder =
+func makeMarketOnCloseOrder*(symbol: string, side: AlpacaSideKind, quantity: int, clientOrderId: string): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,
@@ -107,7 +107,7 @@ func makeMarketOnCloseOrder*(symbol: string, side: SideKind, quantity: int, clie
   )
 
 
-func makeImmediateOrKillOrder*(symbol: string, side: SideKind, quantity: int, clientOrderId: string): AlpacaOrder =
+func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: int, clientOrderId: string): AlpacaOrder =
   ## IOC without price is Market
   AlpacaOrder(
     symbol: symbol,
@@ -120,7 +120,7 @@ func makeImmediateOrKillOrder*(symbol: string, side: SideKind, quantity: int, cl
   )
 
 
-func makeImmediateOrKillOrder*(symbol: string, side: SideKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
+func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
   ## IOC without price is Market
   AlpacaOrder(
     symbol: symbol,
@@ -134,7 +134,7 @@ func makeImmediateOrKillOrder*(symbol: string, side: SideKind, quantity: int, pr
   )
 
 
-func makeFillOrKillOrder*(symbol: string, side: SideKind, kind: OrderKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
+func makeFillOrKillOrder*(symbol: string, side: AlpacaSideKind, kind: AlpacaOrderKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,
@@ -147,7 +147,7 @@ func makeFillOrKillOrder*(symbol: string, side: SideKind, kind: OrderKind, quant
   )
 
 
-func makeLimitOrder*(symbol: string, side: SideKind, tif: TifKind, quantity: int, price: string, clientOrderId: string, extendedHours: bool = false): AlpacaOrder =
+func makeLimitOrder*(symbol: string, side: AlpacaSideKind, tif: AlpacaTifKind, quantity: int, price: string, clientOrderId: string, extendedHours: bool = false): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,

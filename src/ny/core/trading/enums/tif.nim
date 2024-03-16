@@ -2,7 +2,7 @@ import jsony
 
 
 type
-  TifKind* = enum
+  AlpacaTifKind* = enum
     Day
     Gtc
     OpeningAuction
@@ -11,7 +11,7 @@ type
     Fok
 
 
-proc dumpHook*(s: var string, v: TifKind) =
+proc dumpHook*(s: var string, v: AlpacaTifKind) =
   case v
   of Day:
     s.add "day"
@@ -27,7 +27,7 @@ proc dumpHook*(s: var string, v: TifKind) =
     s.add "fok"
 
 
-proc enumHook*(v: string): TifKind =
+proc enumHook*(v: string): AlpacaTifKind =
   case v:
   of "day": Day
   of "gtc": Gtc
@@ -36,10 +36,10 @@ proc enumHook*(v: string): TifKind =
   of "ioc": Ioc
   of "fok": Fok
   else:
-    raise newException(ValueError, "Can't parse TifKind: " & v)
+    raise newException(ValueError, "Can't parse AlpacaTifKind: " & v)
 
 
-proc parseHook*(s: string, i: var int, v: var TifKind) =
+proc parseHook*(s: string, i: var int, v: var AlpacaTifKind) =
   var parsed: string
   parseHook(s, i, parsed)
   v = enumHook(parsed)
