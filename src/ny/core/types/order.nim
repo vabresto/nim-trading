@@ -40,6 +40,10 @@ func hash*(order: SysOrderRef): Hash = hash(order[])
 
 func `==`*(a, b: OrderId): bool {.borrow.}
 func `==`*(a, b: ClientOrderId): bool {.borrow.}
+func `==`*(a, b: SysOrderRef): bool =
+  {.noSideEffect.}:
+    echo "CALLING =="
+  a.clientOrderId == b.clientOrderId
 
 func openInterest*(order: SysOrder): int =
   order.size - order.cumSharesFilled

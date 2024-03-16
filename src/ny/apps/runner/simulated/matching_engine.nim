@@ -25,6 +25,9 @@ import ny/core/types/order
 import ny/core/types/strategy_base
 import ny/core/trading/enums/side
 
+logScope:
+  topics = "sys sys:sim sim-matching-engine"
+
 type
   SimMatchingEngine* = object
     curTime*: Timestamp
@@ -44,33 +47,34 @@ proc makeDelay(me: var SimMatchingEngine): Duration =
   var rng = initRand(me.curTime.epoch)
   initDuration(nanoseconds=rng.gauss(mu=500_000_000, sigma=50_000_000).int64) # mean 500ms, stddev 50ms
 
-proc tryFillOrders(me: var SimMatchingEngine): seq[SysOrderUpdateEvent] =
+proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
   for price in me.book.sortedPrices(Buy):
+    info "Calling tryFillOrders", nnboPrice=me.nbbo.askPrice, orderPrice=price
     if me.nbbo.askPrice <= price:
       var exchangeSharesAvailable = me.nbbo.askSize
       var delay = me.makeDelay()
 
-      for order in me.book.byPrice[Buy][price]:
+      for (id, order) in me.book.byPrice[Buy][price].pairs:
         let fillAmt = min(order[].openInterest, exchangeSharesAvailable)
         if fillAmt > 0:
           if fillAmt == order[].openInterest:
             exchangeSharesAvailable -= fillAmt
             discard me.book.removeOrder(order.id.string)
-            result.add SysOrderUpdateEvent(
+            result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
               orderId: order.id,
               clientOrderId: order.clientOrderId,
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledFull,
               fillAmt: fillAmt,
-            )
+            ))
           else:
-            result.add SysOrderUpdateEvent(
+            result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
               orderId: order.id,
               clientOrderId: order.clientOrderId,
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledPartial,
               fillAmt: fillAmt,
-            )
+            ))
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()
 
@@ -79,50 +83,51 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[SysOrderUpdateEvent] =
       var exchangeSharesAvailable = me.nbbo.bidSize
       var delay = me.makeDelay()
 
-      for order in me.book.byPrice[Sell][price]:
+      for (id, order) in me.book.byPrice[Sell][price].pairs:
         let fillAmt = min(order[].openInterest, exchangeSharesAvailable)
         if fillAmt > 0:
           if fillAmt == order[].openInterest:
             exchangeSharesAvailable -= fillAmt
             discard me.book.removeOrder(order.id.string)
-            result.add SysOrderUpdateEvent(
+            result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
               orderId: order.id,
               clientOrderId: order.clientOrderId,
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledFull,
               fillAmt: fillAmt,
-            )
+            ))
           else:
-            result.add SysOrderUpdateEvent(
+            result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
               orderId: order.id,
               clientOrderId: order.clientOrderId,
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledPartial,
               fillAmt: fillAmt,
-            )
+            ))
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()
   discard
 
-proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[SysOrderUpdateEvent] =
+proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[InputEvent] =
   me.curTime = ev.timestamp
   case ev.kind
   of Quote:
     me.nbbo = Nbbo(
-      askPrice: ev.askPrice.parsePrice,
+      askPrice: ev.askPrice,
       askSize: ev.askSize,
-      bidPrice: ev.bidPrice.parsePrice,
+      bidPrice: ev.bidPrice,
       bidSize: ev.bidSize,
     )
-
     result = me.tryFillOrders()
+  of BarMinute:
+    discard
   of Status:
     me.status = ev.status
 
-proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[SysOrderUpdateEvent] =
+proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
   case msg.kind
   of Timer:
-    return @[]
+    return @[InputEvent(kind: Timer, timer: msg.timer)]
   of OrderSend:
     let orderLookup = me.book.getOrder(msg.clientOrderId.string)
     if orderLookup.isSome:
@@ -142,12 +147,16 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[SysOrderUpdate
       price: msg.price,
     )
 
-    result.add SysOrderUpdateEvent(
+    result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
       orderId: exchId,
       clientOrderId: msg.clientOrderId,
       timestamp: me.curTime + me.makeJitter(),
       kind: New,
-    )
+      side: msg.side,
+      size: msg.quantity,
+      tif: Day,
+      price: msg.price,
+    ))
 
     result &= me.tryFillOrders()
 
@@ -155,11 +164,11 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[SysOrderUpdate
     let order = me.book.removeOrder(msg.idToCancel.string)
 
     if order.isSome:
-      result.add SysOrderUpdateEvent(
+      result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
         orderId: msg.idToCancel,
         clientOrderId: order.get.clientOrderId,
         timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
         kind: Cancelled,
-      )
+      ))
     else:
       warn "Tried to cancel order that doesn't exist", id=msg.idToCancel

@@ -63,7 +63,7 @@ type
     timestamp*: string
     tape*: string
 
-  BarDetails* = object
+  AlpacaBarDetails* = object
     symbol*: string
     openPrice*: float
     highPrice*: float
@@ -126,7 +126,7 @@ type
     of Quote:
       quote*: QuoteDetails
     of BarMinute, BarDay, BarUpdated:
-      bar*: BarDetails
+      bar*: AlpacaBarDetails
     of TradeCorrection:
       tradeCorrection*: TradeCorrectionDetails
     of TradeCancel:

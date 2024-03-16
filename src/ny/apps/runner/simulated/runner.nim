@@ -17,6 +17,9 @@ import ny/core/types/strategy_base
 import ny/core/types/timestamp
 import ny/strategies/dummy/dummy_strat
 
+logScope:
+  topics = "sys sys:sim sim-runner"
+
 
 type
   Simulator* = object
@@ -56,7 +59,7 @@ proc createEmptyOrderUpdateIterator(): auto =
   )
 
 proc initSimulator*(): Simulator =
-  let date = dateTime(2024, mMar, 15)
+  let date = dateTime(2024, mMar, 16)
   let db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
 
   Simulator(
@@ -160,7 +163,13 @@ proc simulate*(sim: var Simulator) =
       of Quote:
         let resps = matchingEngine.onMarketDataEvent(ev.md)
         for resp in resps:
-          sim.scheduledOrderUpdates.push resp
+          case resp.kind
+          of Timer:
+            sim.addTimer(resp.timer)
+          of OrderUpdate:
+            sim.scheduledOrderUpdates.push resp.ou
+          of MarketData:
+            error "Got market data event from matchingEngine.onMarketDataEvent ?!", event=resp
       else:
         discard
     of Timer, OrderUpdate:
@@ -171,4 +180,10 @@ proc simulate*(sim: var Simulator) =
     for cmd in cmds:
       let resps = matchingEngine.onRequest(cmd)
       for resp in resps:
-        sim.scheduledOrderUpdates.push resp
+        case resp.kind
+        of Timer:
+          sim.addTimer(resp.timer)
+        of OrderUpdate:
+          sim.scheduledOrderUpdates.push resp.ou
+        of MarketData:
+          error "Got market data event from matchingEngine.onRequest ?!", event=resp

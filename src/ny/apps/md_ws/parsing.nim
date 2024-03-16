@@ -57,7 +57,7 @@ proc renameHook*(v: var QuoteDetails, fieldName: var string) =
     fieldName = "tape"
 
 
-proc renameHook*(v: var BarDetails, fieldName: var string) =
+proc renameHook*(v: var AlpacaBarDetails, fieldName: var string) =
   if fieldName == "T":
     fieldName = "kind"
   elif fieldName == "S":
@@ -221,7 +221,7 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
     v = AlpacaMdWsReply(kind: kind, quote: ($entry).fromJson(QuoteDetails))
     return
   of BarMinute, BarDay, BarUpdated:
-    v = AlpacaMdWsReply(kind: kind, bar: ($entry).fromJson(BarDetails))
+    v = AlpacaMdWsReply(kind: kind, bar: ($entry).fromJson(AlpacaBarDetails))
     return
   of TradeCorrection:
     v = AlpacaMdWsReply(kind: kind, tradeCorrection: ($entry).fromJson(TradeCorrectionDetails))

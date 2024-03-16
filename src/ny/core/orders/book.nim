@@ -3,6 +3,8 @@ import std/options
 import std/sets
 import std/tables
 
+import chronicles
+
 import ny/core/trading/types
 import ny/core/types/price
 import ny/core/types/order
@@ -12,12 +14,12 @@ type
   OrdersBook* = object
     byId*: Table[OrderId, SysOrderRef]
     byClientId*: Table[ClientOrderId, SysOrderRef]
-    byPrice*: Table[SysSideKind, Table[Price, HashSet[SysOrderRef]]]
+    byPrice*: Table[SysSideKind, Table[Price, Table[OrderId, SysOrderRef]]]
 
 
 proc initOrdersBook*(): OrdersBook =
-  result.byPrice[Buy] = initTable[Price, HashSet[SysOrderRef]]()
-  result.byPrice[Sell] = initTable[Price, HashSet[SysOrderRef]]()
+  result.byPrice[Buy] = initTable[Price, Table[OrderId, SysOrderRef]]()
+  result.byPrice[Sell] = initTable[Price, Table[OrderId, SysOrderRef]]()
 
 
 proc addOrder*(book: var OrdersBook, order: SysOrder) =
@@ -29,8 +31,8 @@ proc addOrder*(book: var OrdersBook, order: SysOrder) =
   book.byClientId[order.clientOrderId] = managedOrder
 
   if order.price notin book.byPrice[order.side]:
-    book.byPrice[order.side][order.price] = initHashSet[SysOrderRef]()
-  book.byPrice[order.side][order.price].incl managedOrder
+    book.byPrice[order.side][order.price] = initTable[ORderId, SysOrderRef]()
+  book.byPrice[order.side][order.price][order.id] = managedOrder
 
 
 proc getOrder*(book: OrdersBook, id: string): Option[SysOrderRef] =
@@ -43,19 +45,23 @@ proc getOrder*(book: OrdersBook, id: string): Option[SysOrderRef] =
 
 
 proc removeOrder*(book: var OrdersBook, anyId: string): Option[SysOrderRef] =
+  info "Trying to remove order", anyId
   let order = block:
     let order = book.getOrder(anyId)
     if order.isSome:
       order.get
     else:
+      info "Failed to find", anyId
       return none[SysOrderRef]()
 
   book.byId.del(order.id)
   book.byClientId.del(order.clientOrderId)
-  book.byPrice[order.side][order.price].excl order
+
+  book.byPrice[order.side][order.price].del order.id
   if book.byPrice[order.side][order.price].len == 0:
     book.byPrice[order.side].del(order.price)
 
+  info "Book final state", book
   some order
 
 

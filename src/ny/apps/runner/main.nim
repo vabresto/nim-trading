@@ -23,6 +23,7 @@ proc main(simulated: bool) =
       info "Starting SIMULATED runner ..."
       var sim = initSimulator()
       sim.simulate()
+      info "Simulated runner done"
     else:
       info "Starting LIVE runner ..."
       let symbol = "AMD"
@@ -55,7 +56,7 @@ proc main(simulated: bool) =
   except DbError:
     error "Failed to connect to db to start simulation", msg=getCurrentExceptionMsg()
   except Exception:
-    error "Simulator raised generic exception", msg=getCurrentExceptionMsg()
+    error "Simulator raised generic exception", msg=getCurrentExceptionMsg(), trace=getCurrentException().getStackTrace()
 
 
 when isMainModule:

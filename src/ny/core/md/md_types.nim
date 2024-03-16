@@ -1,8 +1,11 @@
+import ny/core/types/price
 import ny/core/types/timestamp
+import ny/core/types/md/bar_details
 
 type
   MarketDataUpdateKind* = enum
     Quote
+    BarMinute
     Status
 
   MarketDataStatusUpdateKind* = enum
@@ -14,9 +17,11 @@ type
     timestamp*: Timestamp
     case kind*: MarketDataUpdateKind
     of Quote:
-      askPrice*: float
+      askPrice*: Price
       askSize*: int
-      bidPrice*: float
+      bidPrice*: Price
       bidSize*: int
+    of BarMinute:
+      bar*: BarDetails
     of Status:
       status*: MarketDataStatusUpdateKind
