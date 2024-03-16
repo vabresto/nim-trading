@@ -8,7 +8,7 @@ import std/heapqueue
 import chronicles
 import threading/channels
 
-import ny/apps/runner/chans
+import ny/apps/runner/live/chans
 import ny/apps/runner/timer_types
 import ny/apps/runner/types
 # import ny/core/utils/time_utils

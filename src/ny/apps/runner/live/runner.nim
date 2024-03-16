@@ -2,9 +2,10 @@ import chronicles
 import threading/channels
 import std/isolation
 
-import ny/apps/runner/chans
+import ny/apps/runner/live/chans
 import ny/apps/runner/types
-import ny/apps/runner/strategy
+# import ny/apps/runner/strategy
+import ny/strategies/dummy/dummy_strat
 
 type
   RunnerThreadArgs* = object
@@ -20,7 +21,7 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [], forbids: [Ma
       error "Failed to initialize runner; quitting", args
       return
 
-  var state = 0
+  var state = initDummyStrategy()
 
   while true:
     let msg = block:
@@ -31,7 +32,7 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [], forbids: [Ma
     
     info "Got message", msg
 
-    var req = state.executeStrategy(msg)
+    var req = state.executeDummyStrategy(msg)
     for item in req:
       try:
         oc.send(isolate(item))
