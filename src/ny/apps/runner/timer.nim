@@ -3,7 +3,7 @@
 ## but we don't want to/can't wait for the actual requested time.
 
 import std/heapqueue
-import std/times
+# import std/times
 
 import chronicles
 import threading/channels

@@ -14,8 +14,8 @@ import ny/apps/runner/strategy
 import ny/core/md/md_types
 import ny/apps/runner/types
 import ny/core/types/timestamp
-import ny/core/types/nbbo
 import ny/apps/runner/simulated/matching_engine
+import ny/apps/runner/types
 
 type
   Simulator* = object
