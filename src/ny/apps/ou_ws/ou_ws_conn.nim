@@ -22,6 +22,9 @@ proc toString(str: seq[byte]): string =
   for ch in str:
     add(result, ch.char)
 
+proc renameHook*(v: var Order, fieldName: var string) =
+  if fieldName == "qty":
+    fieldName = "size"
 
 proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: WsOrderUpdate, receiveTs: Timestamp]]] {.async.} =
   let rawPacket = if usesBinaryFrames:
