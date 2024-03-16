@@ -139,7 +139,7 @@ proc simulate*(sim: var Simulator) =
   let eventItr = createEventIterator()
   
   info "Init state ..."
-  var matchingEngine = SimMatchingEngine()
+  var matchingEngine = initSimMatchingEngine()
   var strategyState = 0
 
   info "Running sim ..."
@@ -149,6 +149,7 @@ proc simulate*(sim: var Simulator) =
     # D wrap md events in a non-alpaca object
     # D add a timestamp field to all response msg events (and move away from string type for it)
     # D move most of the below logic to the matching engine
+    # - create internal type wrappers for common data types
     # - implement the actual matching engine logic
     # - might be ready to start implementing dummy strategies at that point?
 

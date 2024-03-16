@@ -26,6 +26,16 @@ type
     book*: OrdersBook
     orderCount*: int = 1
 
+proc initSimMatchingEngine*(): SimMatchingEngine =
+  result.book = initOrdersBook()
+
+proc tryFillOrders(me: var SimMatchingEngine) =
+  for price in me.book.sortedPrices(Buy):
+    info "Considering buy price", price
+  for price in me.book.sortedPrices(Sell):
+    info "Considering sell price", price
+  discard
+
 proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate) =
   me.curTime = ev.timestamp
   case ev.kind
@@ -36,6 +46,8 @@ proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate) =
       bidPrice: ev.bidPrice,
       bidSize: ev.bidSize,
     )
+
+    me.tryFillOrders()
   of Status:
     me.status = ev.status
 
@@ -77,17 +89,53 @@ proc onRequest*(me: var SimMatchingEngine, msg: RequestMessage): seq[OrderUpdate
       timestamp: me.curTime + me.makeJitter(),
       kind: New,
     )
-    # First order we fill, second we let strategy cancel
-    if msg.clientOrderId == "order-1":
-      discard me.book.removeOrder(msg.clientOrderId)
 
-      result.add OrderUpdateEvent(
-        orderId: exchId,
-        clientOrderId: msg.clientOrderId,
-        timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
-        kind: FilledPartial,
-        fillAmt: 1,
-      )
+    me.tryFillOrders()
+
+    # See if we can fill; only handle limit orders for now
+    case msg.side
+    of Buy:
+      if msg.price >= $me.nbbo.askPrice:
+        let fillAmt = min(msg.quantity, me.nbbo.askSize)
+        if fillAmt == msg.quantity:
+          discard me.book.removeOrder(msg.clientOrderId)
+          result.add OrderUpdateEvent(
+            orderId: exchId,
+            clientOrderId: msg.clientOrderId,
+            timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+            kind: FilledFull,
+            fillAmt: fillAmt,
+          )
+        else:
+          result.add OrderUpdateEvent(
+            orderId: exchId,
+            clientOrderId: msg.clientOrderId,
+            timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+            kind: FilledPartial,
+            fillAmt: fillAmt,
+          )
+    of Sell:
+      if msg.price <= $me.nbbo.bidPrice:
+        let fillAmt = min(msg.quantity, me.nbbo.bidSize)
+        if fillAmt == msg.quantity:
+          discard me.book.removeOrder(msg.clientOrderId)
+          result.add OrderUpdateEvent(
+            orderId: exchId,
+            clientOrderId: msg.clientOrderId,
+            timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+            kind: FilledFull,
+            fillAmt: fillAmt,
+          )
+        else:
+          result.add OrderUpdateEvent(
+            orderId: exchId,
+            clientOrderId: msg.clientOrderId,
+            timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+            kind: FilledPartial,
+            fillAmt: fillAmt,
+          )
+
+
   of OrderCancel:
     let order = me.book.removeOrder(msg.idToCancel)
 
@@ -98,3 +146,5 @@ proc onRequest*(me: var SimMatchingEngine, msg: RequestMessage): seq[OrderUpdate
         timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
         kind: Cancelled,
       )
+    else:
+      warn "Tried to cancel order that doesn't exist", id=msg.idToCancel

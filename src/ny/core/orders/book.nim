@@ -1,3 +1,4 @@
+import std/algorithm
 import std/options
 import std/sets
 import std/tables
@@ -8,7 +9,12 @@ type
   OrdersBook* = object
     byId*: Table[string, OrderRef]
     byClientId*: Table[string, OrderRef]
-    byPrice*: Table[string, HashSet[OrderRef]]
+    byPrice*: Table[SideKind, Table[string, HashSet[OrderRef]]]
+
+
+proc initOrdersBook*(): OrdersBook =
+  result.byPrice[Buy] = initTable[string, HashSet[OrderRef]]()
+  result.byPrice[Sell] = initTable[string, HashSet[OrderRef]]()
 
 
 proc addOrder*(book: var OrdersBook, order: Order) =
@@ -19,9 +25,9 @@ proc addOrder*(book: var OrdersBook, order: Order) =
   book.byId[order.id] = managedOrder
   book.byClientId[order.clientOrderId] = managedOrder
 
-  if order.limitPrice notin book.byPrice:
-    book.byPrice[order.limitPrice] = initHashSet[OrderRef]()
-  book.byPrice[order.limitPrice].incl managedOrder
+  if order.limitPrice notin book.byPrice[order.side]:
+    book.byPrice[order.side][order.limitPrice] = initHashSet[OrderRef]()
+  book.byPrice[order.side][order.limitPrice].incl managedOrder
 
 
 proc getOrder*(book: OrdersBook, id: string): Option[OrderRef] =
@@ -43,8 +49,15 @@ proc removeOrder*(book: var OrdersBook, anyId: string): Option[OrderRef] =
 
   book.byId.del(order.id)
   book.byClientId.del(order.clientOrderId)
-  book.byPrice[order.limitPrice].excl order
-  if book.byPrice[order.limitPrice].len == 0:
-    book.byPrice.del(order.limitPrice)
+  book.byPrice[order.side][order.limitPrice].excl order
+  if book.byPrice[order.side][order.limitPrice].len == 0:
+    book.byPrice[order.side].del(order.limitPrice)
 
   some order
+
+
+proc sortedPrices*(book: OrdersBook, side: SideKind, order: SortOrder = Ascending): seq[string] =
+  for price in book.byPrice[side].keys():
+    result.add price
+  
+  result.sorted(order)

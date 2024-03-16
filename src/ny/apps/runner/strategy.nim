@@ -22,6 +22,7 @@ func executeStrategy*(state: var int, update: ResponseMessage): seq[RequestMessa
       state = 3
       return @[RequestMessage(kind: OrderSend, clientOrderId: "order-2", side: Buy, quantity: 5, price: "140.00")]
     elif state == 3:
+      state = 4
       return @[RequestMessage(kind: OrderCancel, idToCancel: "order-2")]
     discard
   of OrderUpdate:

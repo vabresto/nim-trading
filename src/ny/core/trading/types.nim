@@ -30,6 +30,7 @@ type
     extendedHours*: bool = false
     clientOrderId*: string = ""
     # Several fields missing here
+    cumSharesFilled*: int = 0
 
   OrderRef* = ref Order
 
