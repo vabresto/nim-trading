@@ -11,6 +11,7 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/apps/runner/strategy
+import ny/core/md/md_types
 import ny/apps/runner/types
 
 type
@@ -22,7 +23,7 @@ type
     scheduledOrderUpdates: HeapQueue[OrderUpdateEvent]
 
     timerItr: iterator(sim: var Simulator): Option[TimerEvent]{.closure, gcsafe.}
-    mdItr: iterator(): Option[AlpacaMdWsReply]{.closure, gcsafe.}
+    mdItr: iterator(): Option[MarketDataUpdate]{.closure, gcsafe.}
     ouItr: iterator(sim: var Simulator): Option[OrderUpdateEvent]{.closure, gcsafe.}
 
   Nbbo* = object
@@ -75,11 +76,11 @@ proc initSimulator*(): Simulator =
 proc getNextTimerEvent(sim: var Simulator): Option[TimerEvent] =
   sim.timerItr(sim)
 
-proc getNextMarketDataEvent(sim: Simulator): Option[AlpacaMdWsReply] =
+proc getNextMarketDataEvent(sim: Simulator): Option[MarketDataUpdate] =
   if not finished(sim.mdItr):
     sim.mdItr()
   else:
-    none[AlpacaMdWsReply]()
+    none[MarketDataUpdate]()
 
 proc getNextOrderUpdateEvent(sim: var Simulator): Option[OrderUpdateEvent] =
   sim.ouItr(sim)
@@ -144,7 +145,7 @@ proc createEventIterator*(): auto =
       # Two non-nulls
       # 
       of (Some(@timeEv), Some(@mdEv), None()):
-        if mdEv.getTimestamp.isNone or timeEv.at < mdEv.getTimestamp.get:
+        if timeEv.at < mdEv.timestamp:
           yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
           nextTimerEvent = sim.getNextTimerEvent()
         else:
@@ -152,7 +153,7 @@ proc createEventIterator*(): auto =
           nextMdEvent = sim.getNextMarketDataEvent()
       
       of (None(), Some(@mdEv), Some(@ouEv)):
-        if mdEv.getTimestamp.isNone or ouEv.timestamp < mdEv.getTimestamp.get:
+        if ouEv.timestamp < mdEv.timestamp:
           yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
           nextOuEvent = sim.getNextOrderUpdateEvent()
         else:
@@ -171,13 +172,7 @@ proc createEventIterator*(): auto =
       # All non-null
       # 
       of (Some(@timeEv), Some(@mdEv), Some(@ouEv)):
-        # Kinda arbitrary, but don't want to deal with the none
-        # Really should refactor this so the type is non-optional
-        if mdEv.getTimestamp.isNone:
-          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
-          nextMdEvent = sim.getNextMarketDataEvent()
-
-        let next = min([timeEv.at, ouEv.timestamp, mdEv.getTimestamp.get.string])
+        let next = min([timeEv.at, ouEv.timestamp, mdEv.timestamp])
         if next == timeEv.at:
           yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
           nextTimerEvent = sim.getNextTimerEvent()
@@ -208,8 +203,8 @@ proc simulate*(sim: var Simulator) =
     var curTime = ""
 
     # @next:
-    # - wrap md events in a non-alpaca object
-    # - add a timestamp field to all response msg events
+    # D wrap md events in a non-alpaca object
+    # - add a timestamp field to all response msg events (and move away from string type for it)
     # - move most of the below logic to the matching engine
     # - implement the actual matching engine logic
     # - might be ready to start implementing dummy strategies at that point?
@@ -219,13 +214,13 @@ proc simulate*(sim: var Simulator) =
       case ev.md.kind
       of Quote:
         nbbo = some Nbbo(
-          askPrice: ev.md.quote.askPrice,
-          bidPrice: ev.md.quote.bidPrice,
-          askSize: ev.md.quote.askSize,
-          bidSize: ev.md.quote.bidSize,
-          timestamp: ev.md.quote.timestamp,
+          askPrice: ev.md.askPrice,
+          bidPrice: ev.md.bidPrice,
+          askSize: ev.md.askSize,
+          bidSize: ev.md.bidSize,
+          timestamp: ev.md.timestamp,
         )
-        curTime = ev.md.quote.timestamp
+        curTime = ev.md.timestamp
         # info "Got quote", nbbo
       else:
         discard

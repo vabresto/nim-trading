@@ -1,5 +1,6 @@
 import ny/core/md/alpaca/types
 import ny/core/trading/enums/side
+import ny/core/md/md_types
 
 type
   MarketIoEffect* = object
@@ -13,8 +14,8 @@ type
     # at*: float # epoch float
     at*: string
 
-  MarketDataEvent* = object
-    symbol*: string
+  # MarketDataEvent* = object
+  #   symbol*: string
   
   OrderUpdateKind* = enum
     Ack
@@ -40,7 +41,8 @@ type
       timer*: TimerEvent
     of MarketData:
       # md*: MarketDataEvent
-      md*: AlpacaMdWsReply
+      # md*: AlpacaMdWsReply
+      md*: MarketDataUpdate
     of OrderUpdate:
       ou*: OrderUpdateEvent
 
@@ -61,3 +63,13 @@ type
       price*: string
     of OrderCancel:
       idToCancel*: string
+
+
+func timestamp*(rsp: ResponseMessage): string =
+  case rsp.kind
+  of Timer:
+    rsp.timer.at
+  of MarketData:
+    rsp.md.timestamp
+  of OrderUpdate:
+    rsp.ou.timestamp
