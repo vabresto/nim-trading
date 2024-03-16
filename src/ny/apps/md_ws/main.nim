@@ -21,6 +21,7 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
 import ny/core/utils/time_utils
+import ny/core/types/timestamp
 
 
 logScope:
@@ -52,7 +53,7 @@ proc main() {.raises: [].} =
       dbEverConnected = true
       info "Market data db connected"
 
-      let today = getNowUtc().getDateStr()
+      let today = getNowUtc().toDateTime().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
       if mdSymbols.len == 0:
@@ -76,7 +77,7 @@ proc main() {.raises: [].} =
       info "Running main loop ..."
       while true:
         # If we're on to the next day, reload the program to get the new config
-        if getNowUtc().getDateStr() != today:
+        if getNowUtc().toDateTime().getDateStr() != today:
           break
 
         let replyBlock = waitFor ws.receiveMdWsReply()
@@ -93,7 +94,7 @@ proc main() {.raises: [].} =
             "XADD", streamName, "*",
             "parsed_data", reply.toJson(),
             "raw_data", $(replyBlock.rawMd[idx]),
-            "receive_timestamp", replyBlock.receiveTs.dbFmt(),
+            "receive_timestamp", $replyBlock.receiveTs,
           ])
 
           if not writeResult.isOk:

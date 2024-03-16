@@ -20,7 +20,7 @@ import ny/core/md/alpaca/types
 import ny/core/md/utils
 import ny/core/utils/sim_utils
 import ny/core/utils/time_utils
-
+import ny/core/types/timestamp
 
 logScope:
   topics = "ny-md-rec"
@@ -33,7 +33,7 @@ type
     rawContents: RedisValue
     rawJson: JsonNode
     mdReply: AlpacaMdWsReply
-    recordingTimestamp: DateTime
+    receiveTimestamp: Timestamp
 
 
 const kEventsProcessedHeartbeat = 5
@@ -53,7 +53,8 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
           if item.str == "raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
           if item.str == "receive_timestamp":
-            resp.recordingTimestamp = inner.arr[curIdx + 1].str.parseDbTs
+            resp.receiveTimestamp = inner.arr[curIdx + 1].str.parseTimestamp
+            info "Parsing", raw=inner.arr[curIdx + 1].str, parsed=resp.receiveTimestamp
         else:
           discard
 
@@ -94,7 +95,7 @@ proc main() =
       redisInitialized = true
       info "Redis connected"
 
-      let today = getNowUtc().getDateStr()
+      let today = getNowUtc().toDateTime().getDateStr()
       let mdFeed = db.getConfiguredMdFeed(today)
       let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
       if mdSymbols.len == 0:
@@ -109,7 +110,7 @@ proc main() =
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row
-        if getNowUtc().getDateStr() != today:
+        if getNowUtc().toDateTime().getDateStr() != today:
           break
 
         redis.send(makeReadMdStreamsCommand(lastIds, simulation=isSimuluation()))
@@ -128,7 +129,7 @@ proc main() =
             # if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
             let recordTs = getNowUtc()
             # info "Hello", parsed=reply.mdReply, raw=reply.rawJson
-            db.insertRawMdEvent(reply.id, today, reply.mdReply, reply.rawJson, reply.recordingTimestamp, recordTs)
+            db.insertRawMdEvent(reply.id, today, reply.mdReply, reply.rawJson, reply.receiveTimestamp, recordTs)
             inc numProcessed
 
             if numProcessed mod kEventsProcessedHeartbeat == 0:

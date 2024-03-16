@@ -3,7 +3,7 @@ import std/net
 import std/options
 import std/os
 import std/strutils
-import std/times
+# import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
@@ -11,14 +11,15 @@ import jsony
 
 import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
+import ny/core/types/timestamp
 
 
-proc dbFmt*(dt: DateTime): string =
-  dt.format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
+# proc dbFmt*(dt: DateTime): string =
+#   dt.format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
 
 
-proc parseDbTs*(s: string): DateTime =
-  s.parse("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
+# proc parseDbTs*(s: string): DateTime =
+#   s.parse("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
 
 
 proc getMdDb*(host: string, user: string, pass: string, db: string): DbConn =
@@ -67,7 +68,7 @@ proc getConfiguredMdSymbols*(db: DbConn, date: string, feed: string): seq[string
   return @[]
 
 
-proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, rawJson: JsonNode, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
+proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsReply, rawJson: JsonNode, receiveTimestamp: Timestamp, recordingTimestamp: Timestamp) =
   let timestamp = block:
     if event.getTimestamp.isNone:
       error "No timestamp", event
@@ -93,8 +94,8 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
     id,
 
     timestamp,
-    receiveTimestamp.dbFmt,
-    recordingTimestamp.dbFmt,
+    receiveTimestamp,
+    recordingTimestamp,
 
     event.kind,
     rawJson,
@@ -115,7 +116,7 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
   )
 
 
-proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, rawJson: JsonNode, receiveTimestamp: DateTime, recordingTimestamp: DateTime) =
+proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, rawJson: JsonNode, receiveTimestamp: Timestamp, recordingTimestamp: Timestamp) =
   db.exec(sql"""
   INSERT INTO ny.raw_order_updates
     (
@@ -144,8 +145,8 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
     ou.data.order.clientOrderId,
     
     ou.data.timestamp,
-    receiveTimestamp.dbFmt,
-    recordingTimestamp.dbFmt,
+    receiveTimestamp,
+    recordingTimestamp,
 
     ou.data.event,
     ou.data.order.side,

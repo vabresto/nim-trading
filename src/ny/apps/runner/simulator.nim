@@ -202,8 +202,6 @@ proc simulate*(sim: var Simulator) =
   for ev in eventItr(sim):
     # info "Got event", ev
 
-    echo "CUR TIME: ", curTime
-
     # @next:
     # D wrap md events in a non-alpaca object
     # D add a timestamp field to all response msg events (and move away from string type for it)

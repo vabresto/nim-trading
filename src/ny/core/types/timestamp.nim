@@ -6,9 +6,17 @@ type
     epoch*: int64 = 0
     nanos*: NanosecondRange = 0
 
-func `$`*(ts: Timestamp): string =
+const tsStringFormat* = "yyyy-MM-dd'T'hh:mm:ss'.'fffffffffzzz"
+
+proc toTime*(ts: Timestamp): Time {.noSideEffect.} =
+  initTime(ts.epoch, ts.nanos)
+
+proc toDateTime*(ts: Timestamp): DateTime {.noSideEffect.} =
   {.noSideEffect.}:
-    initTime(ts.epoch, ts.nanos).inZone(local()).format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffffzzz")
+    ts.toTime().inZone(local())
+
+func `$`*(ts: Timestamp): string =
+  ts.toDateTime.format(tsStringFormat)
 
 func `<`*(a, b: Timestamp): bool =
   if a.epoch == b.epoch:
@@ -17,18 +25,25 @@ func `<`*(a, b: Timestamp): bool =
     a.epoch < b.epoch
 
 proc parseTimestamp*(s: string): Timestamp {.noSideEffect.} =
-  let splitted = s.split(".")
-  let epochPart = splitted[0]
-  var nanosPart = splitted[1]
+  if s[^1] != 'Z':
+    # We've already parsed this; it may have a timezone and is guaranteed to already have 9 nanos
+    {.noSideEffect.}:
+      let dt = parse(s, tsStringFormat)
+    Timestamp(epoch: dt.toTime.toUnix, nanos: dt.nanosecond)
+  else:
+    let splitted = s.split(".")
+    let epochPart = splitted[0]
+    var nanosPart = splitted[1]
 
-  if nanosPart[^1] != 'Z':
-    return #error
+    if nanosPart[^1] != 'Z':
+      return #error
 
-  # 9 digits ns, plus one for 'Z'
-  while nanosPart.len < 10:
-    nanosPart[^1] = '0'
-    nanosPart.add 'Z'
+    # 9 digits ns, plus one for 'Z'
+    while nanosPart.len < 10:
+      nanosPart[^1] = '0'
+      nanosPart.add 'Z'
 
-  {.noSideEffect.}:
-    let dt = parse(epochPart & "." & nanosPart, "yyyy-MM-dd'T'hh:mm:ss'.'fffffffffzzz")
-  Timestamp(epoch: dt.toTime.toUnix, nanos: dt.nanosecond)
+    {.noSideEffect.}:
+      let dt = parse(epochPart & "." & nanosPart, tsStringFormat)
+    Timestamp(epoch: dt.toTime.toUnix, nanos: dt.nanosecond)
+

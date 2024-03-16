@@ -2,18 +2,21 @@ import std/asyncdispatch
 import std/json
 import std/times
 
+import chronicles except toJson
 import jsony
 import ws as tf_ws
 
 import ny/apps/md_ws/parsing
 import ny/core/md/alpaca/types
 import ny/core/utils/time_utils
+import ny/core/types/timestamp
+
 
 export types
 
 type
   MdWsReply* = object
-    receiveTs*: DateTime
+    receiveTs*: Timestamp
     parsedMd*: seq[AlpacaMdWsReply]
     rawMd*: seq[JsonNode]
 
@@ -21,6 +24,7 @@ type
 proc receiveMdWsReply*(ws: WebSocket): Future[MdWsReply] {.async.} =
   let rawReply = await ws.receiveStrPacket()
   let receiveTimestamp = getNowUtc()
+  info "Receive ts", ts=receiveTimestamp
   if rawReply == "":
     return MdWsReply(receiveTs: receiveTimestamp, parsedMd: @[], rawMd: @[])
   let parsed = rawReply.fromJson(seq[AlpacaMdWsReply])

@@ -10,6 +10,7 @@ import ws as tf_ws
 
 import ny/core/trading/types
 import ny/core/utils/time_utils
+import ny/core/types/timestamp
 
 
 logScope:
@@ -22,7 +23,7 @@ proc toString(str: seq[byte]): string =
     add(result, ch.char)
 
 
-proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: WsOrderUpdate, receiveTs: DateTime]]] {.async.} =
+proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: WsOrderUpdate, receiveTs: Timestamp]]] {.async.} =
   let rawPacket = if usesBinaryFrames:
     (await ws.receiveBinaryPacket()).toString()
   else:
@@ -32,7 +33,7 @@ proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Opt
 
   # Skip heartbeats
   if rawPacket == "":
-    return none[tuple[ou: WsOrderUpdate, receiveTs: DateTime]]()
+    return none[tuple[ou: WsOrderUpdate, receiveTs: Timestamp]]()
 
   var packet = rawPacket.fromJson(WsOrderUpdate)
   packet.raw = rawPacket.parseJson
