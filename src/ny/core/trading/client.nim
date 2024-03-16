@@ -41,7 +41,7 @@ proc close*(alpaca: AlpacaClient) =
   alpaca.client.close()
 
 
-proc sendOrder*(alpaca: AlpacaClient, order: Order): ?!OrderCreateResponse {.raises: [].} =
+proc sendOrder*(alpaca: AlpacaClient, order: AlpacaOrder): ?!OrderCreateResponse {.raises: [].} =
   ## For now, we don't support replacing. Simpler to just require a cancel and send a new order.
   try:
     info "Sending order", order

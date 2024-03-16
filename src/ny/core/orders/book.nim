@@ -7,18 +7,18 @@ import ny/core/trading/types
 
 type
   OrdersBook* = object
-    byId*: Table[string, OrderRef]
-    byClientId*: Table[string, OrderRef]
-    byPrice*: Table[SideKind, Table[string, HashSet[OrderRef]]]
+    byId*: Table[string, AlpacaOrderRef]
+    byClientId*: Table[string, AlpacaOrderRef]
+    byPrice*: Table[SideKind, Table[string, HashSet[AlpacaOrderRef]]]
 
 
 proc initOrdersBook*(): OrdersBook =
-  result.byPrice[Buy] = initTable[string, HashSet[OrderRef]]()
-  result.byPrice[Sell] = initTable[string, HashSet[OrderRef]]()
+  result.byPrice[Buy] = initTable[string, HashSet[AlpacaOrderRef]]()
+  result.byPrice[Sell] = initTable[string, HashSet[AlpacaOrderRef]]()
 
 
-proc addOrder*(book: var OrdersBook, order: Order) =
-  var managedOrder: OrderRef
+proc addOrder*(book: var OrdersBook, order: AlpacaOrder) =
+  var managedOrder: AlpacaOrderRef
   new(managedOrder)
   managedOrder[] = order
 
@@ -26,26 +26,26 @@ proc addOrder*(book: var OrdersBook, order: Order) =
   book.byClientId[order.clientOrderId] = managedOrder
 
   if order.limitPrice notin book.byPrice[order.side]:
-    book.byPrice[order.side][order.limitPrice] = initHashSet[OrderRef]()
+    book.byPrice[order.side][order.limitPrice] = initHashSet[AlpacaOrderRef]()
   book.byPrice[order.side][order.limitPrice].incl managedOrder
 
 
-proc getOrder*(book: OrdersBook, id: string): Option[OrderRef] =
+proc getOrder*(book: OrdersBook, id: string): Option[AlpacaOrderRef] =
   if id in book.byId:
     some book.byId[id]
   elif id in book.byClientId:
     some book.byClientId[id]
   else:
-    none[OrderRef]()
+    none[AlpacaOrderRef]()
 
 
-proc removeOrder*(book: var OrdersBook, anyId: string): Option[OrderRef] =
+proc removeOrder*(book: var OrdersBook, anyId: string): Option[AlpacaOrderRef] =
   let order = block:
     let order = book.getOrder(anyId)
     if order.isSome:
       order.get
     else:
-      return none[OrderRef]()
+      return none[AlpacaOrderRef]()
 
   book.byId.del(order.id)
   book.byClientId.del(order.clientOrderId)

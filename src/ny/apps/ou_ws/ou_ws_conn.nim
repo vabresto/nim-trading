@@ -22,7 +22,7 @@ proc toString(str: seq[byte]): string =
   for ch in str:
     add(result, ch.char)
 
-proc renameHook*(v: var Order, fieldName: var string) =
+proc renameHook*(v: var AlpacaOrder, fieldName: var string) =
   if fieldName == "qty":
     fieldName = "size"
 

@@ -72,7 +72,7 @@ proc onRequest*(me: var SimMatchingEngine, msg: RequestMessage): seq[OrderUpdate
     let exchId = "sim:o:" & $me.orderCount
     inc me.orderCount
 
-    me.book.addOrder Order(
+    me.book.addOrder AlpacaOrder(
       id: exchId,
       clientOrderId: msg.clientOrderId,
       symbol: "SIM",
