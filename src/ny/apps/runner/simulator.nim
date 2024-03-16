@@ -6,7 +6,7 @@ import chronicles
 import db_connector/db_postgres
 import fusion/matching
 
-import ny/apps/runner/sim_md
+import ny/apps/runner/simulated/market_data
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
