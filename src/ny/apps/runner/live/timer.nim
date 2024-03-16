@@ -3,14 +3,12 @@
 ## but we don't want to/can't wait for the actual requested time.
 
 import std/heapqueue
-# import std/times
 
 import chronicles
 import threading/channels
 
 import ny/apps/runner/live/chans
-import ny/apps/runner/timer_types
-# import ny/core/utils/time_utils
+import ny/apps/runner/live/timer_types
 import ny/core/types/strategy_base
 
 var timerThread: Thread[void]
@@ -30,18 +28,6 @@ proc timerThreadEx() {.thread, raises: [].} =
         timers.push(msg.create.timer)
       of DoneTimer:
         discard
-
-    # @next: need to figure out how to set this up properly, sometimes float is more convenient, other times string
-
-    # let curTime = epochTime()
-    # while timers.len > 0 and timers[0].at <= curTime:
-    #   info "Ring ring", timer=timers[0]
-    #   try:
-    #     if not chan.trySend(TimerChanMsg(kind: DoneTimer, done: RespondTimer(timer: timers.pop()))):
-    #       error "Timer failed to ring!", curTime
-    #   except Exception:
-    #     # For =destroy hook
-    #     error "Failed to send timer ring down channel!"
 
 
 proc createTimerThread*() =

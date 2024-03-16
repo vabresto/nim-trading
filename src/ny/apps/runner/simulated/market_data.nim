@@ -5,9 +5,9 @@ import db_connector/db_postgres
 import jsony
 
 import ny/apps/md_ws/parsing
+import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
-import ny/core/md/alpaca/parsing
 import ny/core/types/timestamp
 
 

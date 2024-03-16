@@ -6,15 +6,13 @@ import db_connector/db_postgres
 import threading/channels
 
 import ny/apps/runner/live/chans
-import ny/apps/runner/simulated/market_data
-# import ny/apps/runner/strategy
+import ny/apps/runner/live/runner as live_runner
 import ny/apps/runner/live/timer # used
-import ny/apps/runner/timer_types
+import ny/apps/runner/live/timer_types
+import ny/apps/runner/simulated/market_data
+import ny/apps/runner/simulated/runner as sim_runner
 import ny/core/db/mddb
 import ny/core/env/envs
-import ny/apps/runner/simulated/runner as sim_runner
-import ny/core/md/alpaca/types
-import ny/apps/runner/live/runner as live_runner
 import ny/core/types/strategy_base
 
 

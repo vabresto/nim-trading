@@ -3,8 +3,9 @@ import threading/channels
 import std/isolation
 
 import ny/apps/runner/live/chans
-import ny/strategies/dummy/dummy_strat
 import ny/core/types/strategy_base
+import ny/strategies/dummy/dummy_strat
+
 
 type
   RunnerThreadArgs* = object

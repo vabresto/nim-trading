@@ -4,7 +4,7 @@ import std/tables
 import chronicles
 import threading/channels
 
-import ny/apps/runner/timer_types
+import ny/apps/runner/live/timer_types
 import ny/core/types/strategy_base
 
 

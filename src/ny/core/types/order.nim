@@ -4,7 +4,6 @@ import ny/core/types/order_kind
 import ny/core/types/price
 import ny/core/types/side
 import ny/core/types/tif
-import ny/core/types/timestamp
 
 type
   OrderId* {.borrow.} = distinct string
@@ -30,15 +29,6 @@ type
     Cancelled
     CancelPending
 
-  # OrderUpdateEvent* = object
-  #   orderId*: OrderId
-  #   clientOrderId*: ClientOrderId
-  #   timestamp*: Timestamp
-  #   case kind*: OrderUpdateKind
-  #   of FilledPartial, FilledFull:
-  #     fillAmt*: int
-  #   of Ack, New, Cancelled, CancelPending:
-  #     discard
 
 func `$`*(order: SysOrderRef): string = $(order[])
 func `$`*(id: OrderId): string {.borrow.}

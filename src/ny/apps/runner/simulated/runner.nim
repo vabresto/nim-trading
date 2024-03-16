@@ -6,15 +6,17 @@ import chronicles
 import db_connector/db_postgres
 import fusion/matching
 
+
 import ny/apps/runner/simulated/market_data
+import ny/apps/runner/simulated/matching_engine
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
-import ny/core/types/timestamp
-import ny/apps/runner/simulated/matching_engine
-import ny/strategies/dummy/dummy_strat
 import ny/core/types/strategy_base
+import ny/core/types/timestamp
+import ny/strategies/dummy/dummy_strat
+
 
 type
   Simulator* = object
