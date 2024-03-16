@@ -49,27 +49,12 @@ proc createEmptyTimerIterator(): auto =
 
 proc createEmptyOrderUpdateIterator(): auto =
   (iterator(sim: var Simulator): Option[OrderUpdateEvent] {.closure, gcsafe.} =
-    # var returnedTheFill = false
     while true:
       let res = if sim.scheduledOrderUpdates.len > 0:
         some sim.scheduledOrderUpdates.pop()
       else:
         none[OrderUpdateEvent]()
       yield res
-
-      # For now to test, just hard code returning a fill
-      # if not returnedTheFill:
-      #   returnedTheFill = true
-      #   let res = some OrderUpdateEvent(
-      #     orderId: "external-id",
-      #     clientOrderId: "order-1",
-      #     timestamp: "2024-03-15T03:15:48.300000000Z",
-      #     kind: FilledFull,
-      #     fillAmt: 1,
-      #   )
-      #   yield res
-      # else:
-      #   return none[OrderUpdateEvent]()
     error "End of order update iterator?"
   )
 
@@ -220,6 +205,15 @@ proc simulate*(sim: var Simulator) =
   for ev in eventItr(sim):
     # info "Got event", ev
 
+    var curTime = ""
+
+    # @next:
+    # - wrap md events in a non-alpaca object
+    # - add a timestamp field to all response msg events
+    # - move most of the below logic to the matching engine
+    # - implement the actual matching engine logic
+    # - might be ready to start implementing dummy strategies at that point?
+
     case ev.kind
     of MarketData:
       case ev.md.kind
@@ -231,6 +225,7 @@ proc simulate*(sim: var Simulator) =
           bidSize: ev.md.quote.bidSize,
           timestamp: ev.md.quote.timestamp,
         )
+        curTime = ev.md.quote.timestamp
         # info "Got quote", nbbo
       else:
         discard
@@ -244,13 +239,26 @@ proc simulate*(sim: var Simulator) =
       of Timer:
         sim.addTimer(cmd.timer)
       of OrderSend:
-        # warn "Strategy sent order send command; not implemented yet", cmd
+        # Send new; for now, we'll reuse timestamp to make life easier
         sim.scheduledOrderUpdates.push OrderUpdateEvent(
           orderId: "",
           clientOrderId: cmd.clientOrderId,
-          timestamp: "2024-03-15T03:15:48.300000000Z",
-          kind: FilledPartial,
-          fillAmt: 1,
+          timestamp: curTime,
+          kind: New,
         )
+        # First order we fill, second we let strategy cancel
+        if cmd.clientOrderId == "order-1":
+          sim.scheduledOrderUpdates.push OrderUpdateEvent(
+            orderId: "",
+            clientOrderId: cmd.clientOrderId,
+            timestamp: "2024-03-15T03:15:48.300000000Z",
+            kind: FilledPartial,
+            fillAmt: 1,
+          )
       of OrderCancel:
-        warn "Strategy sent order cancel command; not implemented yet", cmd
+        sim.scheduledOrderUpdates.push OrderUpdateEvent(
+          orderId: cmd.idToCancel,
+          clientOrderId: "",
+          timestamp: "2024-03-15T03:15:49.300000000Z",
+          kind: Cancelled,
+        )
