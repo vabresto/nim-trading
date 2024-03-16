@@ -19,10 +19,11 @@ type
 
     curTime: float
     timers: HeapQueue[TimerEvent]
+    scheduledOrderUpdates: HeapQueue[OrderUpdateEvent]
 
     timerItr: iterator(sim: var Simulator): Option[TimerEvent]{.closure, gcsafe.}
     mdItr: iterator(): Option[AlpacaMdWsReply]{.closure, gcsafe.}
-    ouItr: iterator(): Option[OrderUpdateEvent]{.closure, gcsafe.}
+    ouItr: iterator(sim: var Simulator): Option[OrderUpdateEvent]{.closure, gcsafe.}
 
   Nbbo* = object
     askPrice*: float
@@ -33,11 +34,11 @@ type
     # quote condition, tape could also be relevant
     
 
+proc `<`(a, b: OrderUpdateEvent): bool = a.timestamp < b.timestamp
+
 proc createEmptyTimerIterator(): auto =
   (iterator(sim: var Simulator): Option[TimerEvent] {.closure, gcsafe.} =
-    # info "Sim", sim
     while true:
-      # info "Popping timer"
       let res = if sim.timers.len > 0:
         some sim.timers.pop()
       else:
@@ -47,8 +48,29 @@ proc createEmptyTimerIterator(): auto =
   )
 
 proc createEmptyOrderUpdateIterator(): auto =
-  (iterator(): Option[OrderUpdateEvent] {.closure, gcsafe.} =
-    none[OrderUpdateEvent]()
+  (iterator(sim: var Simulator): Option[OrderUpdateEvent] {.closure, gcsafe.} =
+    # var returnedTheFill = false
+    while true:
+      let res = if sim.scheduledOrderUpdates.len > 0:
+        some sim.scheduledOrderUpdates.pop()
+      else:
+        none[OrderUpdateEvent]()
+      yield res
+
+      # For now to test, just hard code returning a fill
+      # if not returnedTheFill:
+      #   returnedTheFill = true
+      #   let res = some OrderUpdateEvent(
+      #     orderId: "external-id",
+      #     clientOrderId: "order-1",
+      #     timestamp: "2024-03-15T03:15:48.300000000Z",
+      #     kind: FilledFull,
+      #     fillAmt: 1,
+      #   )
+      #   yield res
+      # else:
+      #   return none[OrderUpdateEvent]()
+    error "End of order update iterator?"
   )
 
 proc initSimulator*(): Simulator =
@@ -74,12 +96,8 @@ proc getNextMarketDataEvent(sim: Simulator): Option[AlpacaMdWsReply] =
   else:
     none[AlpacaMdWsReply]()
 
-proc getNextOrderUpdateEvent(sim: Simulator): Option[OrderUpdateEvent] =
-  if not finished(sim.ouItr):
-    sim.ouItr()
-  else:
-    none[OrderUpdateEvent]()
-
+proc getNextOrderUpdateEvent(sim: var Simulator): Option[OrderUpdateEvent] =
+  sim.ouItr(sim)
 
 proc addTimer*(sim: var Simulator, timer: TimerEvent) =
   # info "Pushing timer"
@@ -103,6 +121,8 @@ proc createEventIterator*(): auto =
 
       if nextTimerEvent.isNone:
         nextTimerEvent = sim.getNextTimerEvent()
+      if nextOuEvent.isNone:
+        nextOuEvent = sim.getNextOrderUpdateEvent()
 
       let discriminator = (nextTimerEvent, nextMdEvent, nextOuEvent)
       # info "Looking", discriminator
@@ -140,28 +160,48 @@ proc createEventIterator*(): auto =
       # 
       of (Some(@timeEv), Some(@mdEv), None()):
         if mdEv.getTimestamp.isNone or timeEv.at < mdEv.getTimestamp.get:
-          # info "Returning timer event by elimination (1)"
           yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
           nextTimerEvent = sim.getNextTimerEvent()
         else:
-          # info "Returning market data event by elimination"
           yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
           nextMdEvent = sim.getNextMarketDataEvent()
       
-      # of (None(), Some(@mdEv), None()):
-      #   info "Returning market data event by elimination"
-      #   # yield nextMdEvent.get
-      #   nextMdEvent = sim.getNextMarketDataEvent()
-      # of (None(), None(), Some(@ouEv)):
-      #   info "Returning order update event by elimination"
-      #   # yield nextOuEvent.get
-      #   nextOuEvent = sim.getNextOrderUpdateEvent()
+      of (None(), Some(@mdEv), Some(@ouEv)):
+        if mdEv.getTimestamp.isNone or ouEv.timestamp < mdEv.getTimestamp.get:
+          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
+          nextOuEvent = sim.getNextOrderUpdateEvent()
+        else:
+          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
+          nextMdEvent = sim.getNextMarketDataEvent()
 
+      of (Some(@timeEv), None(), Some(@ouEv)):
+        if timeEv.at < ouEv.timestamp:
+          yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
+          nextTimerEvent = sim.getNextTimerEvent()
+        else:
+          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
+          nextOuEvent = sim.getNextOrderUpdateEvent()
 
       # 
       # All non-null
       # 
       of (Some(@timeEv), Some(@mdEv), Some(@ouEv)):
+        # Kinda arbitrary, but don't want to deal with the none
+        # Really should refactor this so the type is non-optional
+        if mdEv.getTimestamp.isNone:
+          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
+          nextMdEvent = sim.getNextMarketDataEvent()
+
+        let next = min([timeEv.at, ouEv.timestamp, mdEv.getTimestamp.get.string])
+        if next == timeEv.at:
+          yield ResponseMessage(kind: Timer, timer: nextTimerEvent.get)
+          nextTimerEvent = sim.getNextTimerEvent()
+        elif next == ouEv.timestamp:
+          yield ResponseMessage(kind: OrderUpdate, ou: nextOuEvent.get)
+          nextOuEvent = sim.getNextOrderUpdateEvent()
+        else:
+          yield ResponseMessage(kind: MarketData, md: nextMdEvent.get)
+          nextMdEvent = sim.getNextMarketDataEvent()
         discard
       discard
 
@@ -203,7 +243,14 @@ proc simulate*(sim: var Simulator) =
       case cmd.kind
       of Timer:
         sim.addTimer(cmd.timer)
-      of MarketData:
-        error "Strategy sent market data command?!", cmd
-      of OrderUpdate:
-        warn "Strategy sent order update command; not implemented yet", cmd
+      of OrderSend:
+        # warn "Strategy sent order send command; not implemented yet", cmd
+        sim.scheduledOrderUpdates.push OrderUpdateEvent(
+          orderId: "",
+          clientOrderId: cmd.clientOrderId,
+          timestamp: "2024-03-15T03:15:48.300000000Z",
+          kind: FilledPartial,
+          fillAmt: 1,
+        )
+      of OrderCancel:
+        warn "Strategy sent order cancel command; not implemented yet", cmd
