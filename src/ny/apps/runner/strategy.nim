@@ -1,6 +1,11 @@
+import chronicles
+
 import ny/apps/runner/types
 
 func executeStrategy*(state: var int, update: ResponseMessage): seq[RequestMessage] =
+  {.noSideEffect.}:
+    info "Strategy got event", update
+
   case update.kind
   of Timer:
     discard

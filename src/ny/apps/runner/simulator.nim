@@ -10,7 +10,7 @@ import ny/apps/runner/sim_md
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/alpaca/types
-
+import ny/apps/runner/strategy
 import ny/apps/runner/types
 
 type
@@ -23,6 +23,14 @@ type
     timerItr: iterator(sim: var Simulator): Option[TimerEvent]{.closure, gcsafe.}
     mdItr: iterator(): Option[AlpacaMdWsReply]{.closure, gcsafe.}
     ouItr: iterator(): Option[OrderUpdateEvent]{.closure, gcsafe.}
+
+  Nbbo* = object
+    askPrice*: float
+    bidPrice*: float
+    askSize*: int
+    bidSize*: int
+    timestamp*: string
+    # quote condition, tape could also be relevant
     
 
 proc createEmptyTimerIterator(): auto =
@@ -159,3 +167,43 @@ proc createEventIterator*(): auto =
 
     discard
   )
+
+
+proc simulate*(sim: var Simulator) =
+  info "Creating event iterator ..."
+  let eventItr = createEventIterator()
+  info "Running sim ..."
+
+  var nbbo = none[Nbbo]()
+
+  var strategyState = 0
+  for ev in eventItr(sim):
+    # info "Got event", ev
+
+    case ev.kind
+    of MarketData:
+      case ev.md.kind
+      of Quote:
+        nbbo = some Nbbo(
+          askPrice: ev.md.quote.askPrice,
+          bidPrice: ev.md.quote.bidPrice,
+          askSize: ev.md.quote.askSize,
+          bidSize: ev.md.quote.bidSize,
+          timestamp: ev.md.quote.timestamp,
+        )
+        # info "Got quote", nbbo
+      else:
+        discard
+    of Timer, OrderUpdate:
+      discard
+
+    let cmds = strategyState.executeStrategy(ev)
+    # info "Got replies", cmds
+    for cmd in cmds:
+      case cmd.kind
+      of Timer:
+        sim.addTimer(cmd.timer)
+      of MarketData:
+        error "Strategy sent market data command?!", cmd
+      of OrderUpdate:
+        warn "Strategy sent order update command; not implemented yet", cmd

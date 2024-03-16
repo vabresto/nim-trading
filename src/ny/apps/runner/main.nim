@@ -1,24 +1,24 @@
-import std/os
-import std/times
+# import std/os
+# import std/times
 
 import chronicles
 import db_connector/db_postgres
-import threading/channels
+# import threading/channels
 
-import ny/apps/runner/chans
-import ny/apps/runner/sim_md
-import ny/apps/runner/strategy
-import ny/apps/runner/timer
-import ny/apps/runner/timer_types
+# import ny/apps/runner/chans
+# import ny/apps/runner/sim_md
+# import ny/apps/runner/strategy
+import ny/apps/runner/timer # used
+# import ny/apps/runner/timer_types
 import ny/apps/runner/types
-import ny/core/db/mddb
-import ny/core/env/envs
+# import ny/core/db/mddb
+# import ny/core/env/envs
 import ny/apps/runner/simulator
-import ny/core/md/alpaca/types
+# import ny/core/md/alpaca/types
 
 
 proc main() =
-  let symbol = "AMD"
+  # let symbol = "AMD"
 
   # createTimerThread()
 
@@ -48,21 +48,7 @@ proc main() =
   try:
     info "Starting sim ..."
     var sim = initSimulator()
-    info "Creating event iterator ..."
-    let eventItr = createEventIterator()
-    info "Running sim ..."
-
-    var state = 0
-    for ev in eventItr(sim):
-      info "Got event", ev
-      let cmds = state.executeStrategy(ev)
-      # info "Got replies", cmds
-      for cmd in cmds:
-        case cmd.kind
-        of Timer:
-          sim.addTimer(cmd.timer)
-        of MarketData, OrderUpdate:
-          discard
+    sim.simulate()
   
   except DbError:
     error "Failed to connect to db to start simulation", msg=getCurrentExceptionMsg()
