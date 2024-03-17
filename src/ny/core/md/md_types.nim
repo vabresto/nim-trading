@@ -26,3 +26,14 @@ type
       bar*: BarDetails
     of Status:
       status*: MarketDataStatusUpdateKind
+
+
+func parseMarketDataStatusUpdateKind*(s: string): MarketDataStatusUpdateKind =
+  # https://docs.alpaca.markets/docs/real-time-stock-pricing-data#status-codes
+  case s
+  of "2", "H":
+    Halt
+  of "3", "T":
+    Resume
+  else:
+    Other

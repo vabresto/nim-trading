@@ -1,0 +1,13 @@
+import nim_redis
+
+proc getStreamName*(val: RedisValue): ?!tuple[stream: string, id: string] {.raises: [].} =
+  try:
+    case val.kind
+    of Array:
+      let streamName = val.arr[0].arr[0].str
+      let id = val.arr[0].arr[1].arr[0].arr[0].str
+      return success (streamName, id)
+    of Null, Error, SimpleString, BulkString, Integer:
+      return failure "Unable to parse non-array stream value: " & $val
+  except ValueError:
+    return failure "Error parsing as a stream response: " & $val
