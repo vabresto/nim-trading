@@ -49,11 +49,11 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
       for curIdx, item in enumerate(inner.arr):
         case item.kind
         of SimpleString, BulkString:
-          if item.str == "parsed_data":
+          if item.str == "md_parsed_data":
             resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
-          if item.str == "raw_data":
+          if item.str == "md_raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
-          if item.str == "receive_timestamp":
+          if item.str == "md_receive_timestamp":
             resp.receiveTimestamp = inner.arr[curIdx + 1].str.parseTimestamp
         else:
           discard

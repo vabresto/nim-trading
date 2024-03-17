@@ -1,4 +1,5 @@
 import std/asyncdispatch
+import std/json
 import std/net
 import std/options
 import std/os
@@ -65,7 +66,12 @@ proc main() {.raises: [].} =
           
           let streamName = makeOuStreamName(today, symbol)
           info "Writing to stream", streamName
-          let writeResult = redis.cmd(@["XADD", streamName, "*", "data", reply.get.ou.toJson(), "receive_timestamp", $reply.get.receiveTs])
+          let writeResult = redis.cmd(@[
+            "XADD", streamName, "*",
+            "ou_parsed_data", reply.get.ou.toJson(),
+            "ou_raw_data", $(reply.get.ou.raw),
+            "ou_receive_timestamp", $reply.get.receiveTs,
+          ])
           if not writeResult.isOk:
             error "Write not ok", msg=writeResult.error.msg
           else:

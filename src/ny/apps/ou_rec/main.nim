@@ -46,19 +46,15 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
   try:
     case val.kind
     of Array:
-      var dataIdx = 0
-      var timestampIdx = 0
-
       let inner = val.arr[0].arr[1].arr[0].arr[1]
       for curIdx, item in enumerate(inner.arr):
         case item.kind
         of SimpleString, BulkString:
-          if item.str == "data":
-            dataIdx = curIdx + 1
+          if item.str == "ou_parsed_data":
             resp.ouReply = inner.arr[curIdx + 1].str.fromJson(AlpacaOuWsReply)
+          if item.str == "ou_raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
-          if item.str == "receive_timestamp":
-            timestampIdx = curIdx + 1
+          if item.str == "ou_receive_timestamp":
             resp.receiveTimestamp = inner.arr[curIdx + 1].str.parseTimestamp
         else:
           discard
