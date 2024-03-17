@@ -49,7 +49,6 @@ proc makeDelay(me: var SimMatchingEngine): Duration =
 
 proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
   for price in me.book.sortedPrices(Buy):
-    info "Calling tryFillOrders", nnboPrice=me.nbbo.askPrice, orderPrice=price
     if me.nbbo.askPrice <= price:
       var exchangeSharesAvailable = me.nbbo.askSize
       var delay = me.makeDelay()
@@ -106,7 +105,6 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
             ))
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()
-  discard
 
 proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[InputEvent] =
   me.curTime = ev.timestamp

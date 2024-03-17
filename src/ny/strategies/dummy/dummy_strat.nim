@@ -39,6 +39,9 @@ type
     numConsecIncreases: int = 0
     lastBar: Option[BarDetails]
 
+    position: int = 0
+    positionVwap: float = 0
+
     orderIdBase: string = ""
     numOrdersSent: int = 0
     numOrdersClosed: int = 0
@@ -75,6 +78,23 @@ func removeOrder(state: var DummyStrategyState, update: InputEvent) =
       error "Trying to close missing order!", cur=state.openOrders[update.ou.orderId], event=update
 
 
+func handleFill(state: var DummyStrategyState, update: InputEvent) =
+  let fillAmt = update.ou.fillAmt
+  state.stratCumSharesFilled += fillAmt
+
+  try:
+    var order = state.openOrders[update.ou.orderId]
+    case order.side
+    of Buy:
+      state.position += fillAmt
+    of Sell:
+      state.position -= fillAmt
+    order.cumSharesFilled += fillAmt
+  except KeyError:
+    {.noSideEffect.}:
+      error "Failed to update fill amount!", event=update, state
+
+
 func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): seq[OutputEvent] {.raises: [].} =
   {.noSideEffect.}:
     debug "Strategy got event", update, ts=update.timestamp, state
@@ -89,8 +109,29 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
     if "[RESET-STATE]" in update.timer.name:
       {.noSideEffect.}:
         info "Got reset state message from timer", curState=state.state
-    state.state = WaitingForMomentum
-    state.numConsecIncreases = 0
+
+    # If we had any fills, go to exit, otherwise, back to wait for momentum
+    if state.position > 0:
+      state.state = ExitingPosition
+      let clientOrderId = state.makeOrderId
+      let order = SysOrder(
+        id: "---PENDING---".OrderId,
+        clientOrderId: clientOrderId,
+        side: Sell,
+        kind: Limit,
+        tif: Day,
+        size: state.position,
+        price: (state.positionVwap * 1.005).parsePrice, # try to take 0.5% in profit
+      )
+      state.pendingOrders[clientOrderId] = order
+      result &= @[
+        OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
+        OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for exit expired; try again")),
+      ]
+    else:
+      state.state = WaitingForMomentum
+      state.numConsecIncreases = 0
+    
     for id in state.openOrders.keys:
       result &= OutputEvent(kind: OrderCancel, idToCancel: id)
       {.noSideEffect.}:
@@ -164,14 +205,9 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         price: update.ou.price,
       )
     of FilledPartial:
-      state.stratCumSharesFilled += update.ou.fillAmt
-      try:
-        state.openOrders[update.ou.orderId].cumSharesFilled += update.ou.fillAmt
-      except KeyError:
-        {.noSideEffect.}:
-          error "Failed to update fill amount!", event=update, state
+      state.handleFill(update)
     of FilledFull:
-      state.stratCumSharesFilled += update.ou.fillAmt
+      state.handleFill(update)
       state.removeOrder(update)
     of Cancelled:
       state.removeOrder(update)
