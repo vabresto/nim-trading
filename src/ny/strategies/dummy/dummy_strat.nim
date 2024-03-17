@@ -5,6 +5,7 @@
 ## If we do get fills, try to exit (no trailing stop implemented yet, so we'll just go for a fixed price increase for now)
 ## Maybe consider having a close position at end of day state
 
+import std/math
 import std/options
 import std/strutils
 import std/tables
@@ -41,6 +42,7 @@ type
 
     # placeholder for now to sort of simulate end of day
     curEventNum: int = 0
+    noMdLoopNum: int = 0
 
     position: int = 0
     positionCost: Price
@@ -49,7 +51,11 @@ type
     orderIdBase: string = ""
     numOrdersSent: int = 0
     numOrdersClosed: int = 0
-    stratCumSharesFilled: int = 0
+    
+    stratTotalSharesBought: int = 0
+    stratTotalSharesSold: int = 0
+    stratTotalNotionalBought: Price
+    stratTotalNotionalSold: Price
     stratPnl: Price
 
     pendingOrders: Table[ClientOrderId, SysOrder]
@@ -71,6 +77,13 @@ func makeOrderId(state: var DummyStrategyState): ClientOrderId =
   (state.orderIdBase & ":dummy:o-" & $state.numOrdersSent).ClientOrderId
 
 
+func calculateTotalFees*(state: var DummyStrategyState): tuple[regFee: Price, tafFee: Price] =
+  # https://alpaca.markets/blog/reg-taf-fees/
+  let regFee = ceil(state.stratTotalNotionalSold.inCents.float * (1_000_000 / 8))
+  let tafFee = ceil(state.stratTotalSharesSold * 166 / 1_000_000)
+  ((regFee/100).parsePrice, tafFee.parsePrice)
+
+
 func removeOrder(state: var DummyStrategyState, update: InputEvent) =
   {.noSideEffect.}:
     info "Closing order", id=update.ou.orderId
@@ -87,18 +100,21 @@ func handleFill(state: var DummyStrategyState, update: InputEvent) =
   let fillAmt = update.ou.fillAmt
   let fillPrice = update.ou.fillPrice
   let eventPrice = fillPrice * fillAmt
-  state.stratCumSharesFilled += fillAmt
 
   try:
     var order = state.openOrders[update.ou.orderId]
     case order.side
     of Buy:
+      state.stratTotalSharesBought += fillAmt
+      state.stratTotalNotionalBought += eventPrice
       state.position += fillAmt
       state.stratPnl -= eventPrice
       # For buys, we update the average price we bought at
       state.positionCost += eventPrice
       state.positionVwap = ((state.positionCost.dollars * 100 + state.positionCost.cents) / state.position) / 100
     of Sell:
+      state.stratTotalSharesSold += fillAmt
+      state.stratTotalNotionalSold += eventPrice
       state.position -= fillAmt
       state.stratPnl += eventPrice
       # For sells, if we end up at 0, we can reset our vwap
@@ -115,14 +131,21 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
   {.noSideEffect.}:
     debug "Strategy got event", update, ts=update.timestamp, state
 
-  state.curTime = update.timestamp
-
   inc state.curEventNum
-  if state.curEventNum > 500:
+
+  # This is not ideal, but it gives us a way to stop the strategy, especially in sim mode
+  # We don't send enough events to trigger the stop normally either, so this seems acceptable but not ideal
+  if update.kind != MarketData:
+    inc state.noMdLoopNum
+  else:
+    state.noMdLoopNum = 0
+  if state.noMdLoopNum > 10:
     # TODO: Once implemented, send a market order to sell out the rest of the position here
     {.noSideEffect.}:
       info "Hit max events; closing out", eventNum=state.curEventNum
     return
+
+  state.curTime = update.timestamp
 
   case update.kind
   of Timer:
@@ -131,7 +154,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
     if "[RESET-STATE]" in update.timer.name:
       {.noSideEffect.}:
-        info "Got reset state message from timer", curState=state.state
+        info "Got reset state message from timer", curState=state.state, fees=state.calculateTotalFees
 
       for id in state.openOrders.keys:
         result &= OutputEvent(kind: OrderCancel, idToCancel: id)

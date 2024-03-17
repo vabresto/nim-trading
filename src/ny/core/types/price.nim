@@ -41,6 +41,9 @@ func `*`*(a: Price, b: int): Price =
   let allCents = (a.dollars * 100 + a.cents) * b
   Price(dollars: floorDiv(allCents, 100), cents: floorMod(allCents, 100))
 
+func inCents*(p: Price): int =
+  p.dollars * 100 + p.cents
+
 func parsePrice*(price: float): Price {.raises: [].} =
   let allCents = (price * 100).int
   Price(dollars: floorDiv(allCents, 100), cents: floorMod(allCents, 100))
