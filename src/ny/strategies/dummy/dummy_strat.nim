@@ -12,12 +12,13 @@ import std/times
 
 import chronicles
 
-import ny/core/types/timestamp
+import ny/core/md/md_types
+import ny/core/types/md/bar_details
 import ny/core/types/order
 import ny/core/types/price
 import ny/core/types/strategy_base
-import ny/core/md/md_types
-import ny/core/types/md/bar_details
+import ny/core/types/timestamp
+
 
 const kNumRequiredBarIncreases = 3
 const kCentsEnterDiscount = 15

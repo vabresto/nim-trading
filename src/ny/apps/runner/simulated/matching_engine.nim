@@ -8,22 +8,22 @@
 import std/algorithm
 import std/options
 import std/random
-import std/sets
 import std/tables
 import std/times
 
 import chronicles
 
-import ny/core/types/nbbo
-import ny/core/types/timestamp
 import ny/core/md/md_types
-import ny/core/orders/book
-import ny/core/trading/types
-import ny/core/types/side
-import ny/core/types/price
-import ny/core/types/order
-import ny/core/types/strategy_base
 import ny/core/trading/enums/side
+import ny/core/trading/types
+import ny/core/types/book
+import ny/core/types/nbbo
+import ny/core/types/order
+import ny/core/types/price
+import ny/core/types/side
+import ny/core/types/strategy_base
+import ny/core/types/timestamp
+
 
 logScope:
   topics = "sys sys:sim sim-matching-engine"

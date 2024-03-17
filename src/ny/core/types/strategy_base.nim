@@ -1,9 +1,10 @@
 import ny/core/md/md_types
+import ny/core/types/order
 import ny/core/types/price
 import ny/core/types/side
 import ny/core/types/tif
 import ny/core/types/timestamp
-import ny/core/types/order
+
 
 type
   StrategyBase* = object of RootObj

@@ -16,12 +16,11 @@ import nim_redis
 
 import ny/core/db/mddb
 import ny/core/env/envs
-# import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
 import ny/core/md/utils
-import ny/core/utils/sim_utils
-import ny/core/utils/time_utils
 import ny/core/types/timestamp
+import ny/core/utils/sim_utils
+
 
 logScope:
   topics = "ny-ou-rec"
@@ -38,7 +37,7 @@ type
 
 
 
-const kEventsProcessedHeartbeat = 5
+const kEventsProcessedHeartbeat = 10
 
 
 proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =

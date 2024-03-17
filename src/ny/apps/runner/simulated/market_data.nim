@@ -8,9 +8,9 @@ import ny/apps/md_ws/parsing
 import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
+import ny/core/types/md/bar_details
 import ny/core/types/price
 import ny/core/types/timestamp
-import ny/core/types/md/bar_details
 
 
 proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =

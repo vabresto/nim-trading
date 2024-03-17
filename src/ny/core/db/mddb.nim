@@ -3,7 +3,6 @@ import std/net
 import std/options
 import std/os
 import std/strutils
-# import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
@@ -12,14 +11,6 @@ import jsony
 import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
 import ny/core/types/timestamp
-
-
-# proc dbFmt*(dt: DateTime): string =
-#   dt.format("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
-
-
-# proc parseDbTs*(s: string): DateTime =
-#   s.parse("yyyy-MM-dd'T'hh:mm:ss'.'fffffffff'Z'")
 
 
 proc getMdDb*(host: string, user: string, pass: string, db: string): DbConn =

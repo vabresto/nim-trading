@@ -1,13 +1,12 @@
 import std/algorithm
 import std/options
-import std/sets
 import std/tables
 
 import chronicles
 
 import ny/core/trading/types
-import ny/core/types/price
 import ny/core/types/order
+import ny/core/types/price
 import ny/core/types/side
 
 type

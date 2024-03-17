@@ -6,17 +6,13 @@ import std/selectors
 import std/times
 
 import chronicles except toJson
-# import db_connector/db_postgres
 import jsony
 import nim_redis
 import ws
 
 import ny/apps/ou_ws/ou_ws_conn
-import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
-# import ny/core/utils/sim_utils
-import ny/core/utils/time_utils
 import ny/core/types/timestamp
 
 
@@ -24,16 +20,14 @@ logScope:
   topics = "ny-ou-ws"
 
 
-const kEventsProcessedHeartbeat = 5
+const kEventsProcessedHeartbeat = 10
 
 
 proc main() {.raises: [].} =
   var redisInitialized = false
-  # var dbInitialized = false
   var wsInitialized = false
 
   var redis: RedisClient
-  # var db: DbConn
   var ws: WebSocket
 
   var numProcessed = 0
@@ -41,10 +35,6 @@ proc main() {.raises: [].} =
   while true:
     try:
       info "Starting connections ..."
-      # info "Starting market data db ..."
-      # db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-      # dbInitialized = true
-      # info "Market data db connected"
 
       let today = getNowUtc().toDateTime().getDateStr()
 
@@ -66,8 +56,6 @@ proc main() {.raises: [].} =
 
         let reply = waitFor ws.receiveTradeUpdateReply(true)
         if reply.isSome:
-          info "Got reply", reply=reply.get
-
           let symbol: string = block:
             if reply.get.ou.symbol != "":
               reply.get.ou.symbol
@@ -113,13 +101,6 @@ proc main() {.raises: [].} =
           error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
         finally:
           redisInitialized = false
-
-      # # Close db
-      # if dbInitialized:
-      #   try:
-      #     db.close()
-      #   finally:
-      #     dbInitialized = false
 
       sleep(1_000)
 

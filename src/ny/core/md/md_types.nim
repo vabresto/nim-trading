@@ -1,6 +1,7 @@
+import ny/core/types/md/bar_details
 import ny/core/types/price
 import ny/core/types/timestamp
-import ny/core/types/md/bar_details
+
 
 type
   MarketDataUpdateKind* = enum
