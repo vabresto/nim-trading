@@ -25,8 +25,17 @@ func `+`*(a, b: Price): Price =
   let totalDollars = a.dollars + b.dollars
   Price(dollars: floorDiv(totalDollars * 100 + totalCents, 100), cents: floorMod(totalCents, 100))
 
+func `+=`*(a: var Price, b: Price) =
+  let totalCents = a.cents + b.cents
+  let totalDollars = a.dollars + b.dollars
+  a.dollars = floorDiv(totalDollars * 100 + totalCents, 100)
+  a.cents = floorMod(totalCents, 100)
+
 func `-`*(a, b: Price): Price =
   a + Price(dollars: -b.dollars, cents: b.cents)
+
+func `-=`*(a: var Price, b: Price) =
+  a += Price(dollars: -b.dollars, cents: b.cents)
 
 func `*`*(a: Price, b: int): Price =
   let allCents = (a.dollars * 100 + a.cents) * b

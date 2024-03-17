@@ -65,6 +65,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledFull,
               fillAmt: fillAmt,
+              fillPrice: me.nbbo.askPrice,
             ))
           else:
             result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
@@ -73,6 +74,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledPartial,
               fillAmt: fillAmt,
+              fillPrice: me.nbbo.askPrice,
             ))
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()
@@ -94,6 +96,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledFull,
               fillAmt: fillAmt,
+              fillPrice: me.nbbo.bidPrice,
             ))
           else:
             result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
@@ -102,6 +105,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
               timestamp: me.curTime + delay + me.makeJitter(),
               kind: FilledPartial,
               fillAmt: fillAmt,
+              fillPrice: me.nbbo.bidPrice,
             ))
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()

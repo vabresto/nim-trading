@@ -38,6 +38,7 @@ type
     case kind*: SysOrderUpdateKind
     of FilledPartial, FilledFull:
       fillAmt*: int
+      fillPrice*: Price
     of Ack, New:
       side*: SysSideKind
       size*: int

@@ -39,13 +39,18 @@ type
     numConsecIncreases: int = 0
     lastBar: Option[BarDetails]
 
+    # placeholder for now to sort of simulate end of day
+    curEventNum: int = 0
+
     position: int = 0
+    positionCost: Price
     positionVwap: float = 0
 
     orderIdBase: string = ""
     numOrdersSent: int = 0
     numOrdersClosed: int = 0
     stratCumSharesFilled: int = 0
+    stratPnl: Price
 
     pendingOrders: Table[ClientOrderId, SysOrder]
     openOrders: Table[OrderId, SysOrder]
@@ -80,6 +85,8 @@ func removeOrder(state: var DummyStrategyState, update: InputEvent) =
 
 func handleFill(state: var DummyStrategyState, update: InputEvent) =
   let fillAmt = update.ou.fillAmt
+  let fillPrice = update.ou.fillPrice
+  let eventPrice = fillPrice * fillAmt
   state.stratCumSharesFilled += fillAmt
 
   try:
@@ -87,8 +94,17 @@ func handleFill(state: var DummyStrategyState, update: InputEvent) =
     case order.side
     of Buy:
       state.position += fillAmt
+      state.stratPnl -= eventPrice
+      # For buys, we update the average price we bought at
+      state.positionCost += eventPrice
+      state.positionVwap = ((state.positionCost.dollars * 100 + state.positionCost.cents) / state.position) / 100
     of Sell:
       state.position -= fillAmt
+      state.stratPnl += eventPrice
+      # For sells, if we end up at 0, we can reset our vwap
+      if state.position == 0:
+        state.positionVwap = 0.float
+        state.positionCost = Price(dollars: 0, cents: 0)
     order.cumSharesFilled += fillAmt
   except KeyError:
     {.noSideEffect.}:
@@ -101,6 +117,13 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
   state.curTime = update.timestamp
 
+  inc state.curEventNum
+  if state.curEventNum > 500:
+    # TODO: Once implemented, send a market order to sell out the rest of the position here
+    {.noSideEffect.}:
+      info "Hit max events; closing out", eventNum=state.curEventNum
+    return
+
   case update.kind
   of Timer:
     {.noSideEffect.}:
@@ -110,33 +133,32 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
       {.noSideEffect.}:
         info "Got reset state message from timer", curState=state.state
 
-    # If we had any fills, go to exit, otherwise, back to wait for momentum
-    if state.position > 0:
-      state.state = ExitingPosition
-      let clientOrderId = state.makeOrderId
-      let order = SysOrder(
-        id: "---PENDING---".OrderId,
-        clientOrderId: clientOrderId,
-        side: Sell,
-        kind: Limit,
-        tif: Day,
-        size: state.position,
-        price: (state.positionVwap * 1.005).parsePrice, # try to take 0.5% in profit
-      )
-      state.pendingOrders[clientOrderId] = order
-      result &= @[
-        OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
-        OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for exit expired; try again")),
-      ]
-    else:
-      state.state = WaitingForMomentum
-      state.numConsecIncreases = 0
-    
-    for id in state.openOrders.keys:
-      result &= OutputEvent(kind: OrderCancel, idToCancel: id)
-      {.noSideEffect.}:
-        debug "Sending order cancel event", id
+      for id in state.openOrders.keys:
+        result &= OutputEvent(kind: OrderCancel, idToCancel: id)
+        {.noSideEffect.}:
+          debug "Sending order cancel event", id
 
+      # If we had any fills, go to exit, otherwise, back to wait for momentum
+      if state.position > 0:
+        state.state = ExitingPosition
+        let clientOrderId = state.makeOrderId
+        let order = SysOrder(
+          id: "---PENDING---".OrderId,
+          clientOrderId: clientOrderId,
+          side: Sell,
+          kind: Limit,
+          tif: Day,
+          size: state.position,
+          price: (state.positionVwap * 1.005).parsePrice, # try to take 0.5% in profit
+        )
+        state.pendingOrders[clientOrderId] = order
+        result &= @[
+          OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
+          OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for exit expired; try again")),
+        ]
+      else:
+        state.state = WaitingForMomentum
+        state.numConsecIncreases = 0
 
   of MarketData:
     if update.kind == MarketData and update.md.kind == BarMinute:
@@ -165,8 +187,8 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
             kind: Limit,
             tif: Day,
             size: 100,
-            # price: newBar.openPrice - Price(dollars: 0, cents: kCentsEnterDiscount),
-            price: newBar.highPrice, # for debug
+            price: newBar.highPrice - Price(dollars: 0, cents: kCentsEnterDiscount),
+            # price: newBar.highPrice, # for debug
           )
           state.pendingOrders[clientOrderId] = order
           return @[
