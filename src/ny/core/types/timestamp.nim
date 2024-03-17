@@ -48,6 +48,9 @@ func `<`*(a, b: Timestamp): bool =
   else:
     a.epoch < b.epoch
 
+func `<=`*(a, b: Timestamp): bool =
+  a < b or a == b
+
 proc parseTimestamp*(s: string): Timestamp {.noSideEffect, raises: [].} =
   # A few different cases:
   # - could be a raw alpaca md timestamp with timezone info

@@ -1,4 +1,5 @@
 import std/options
+import std/rlocks
 import std/tables
 
 import chronicles
@@ -7,20 +8,25 @@ import threading/channels
 import ny/apps/runner/live/timer_types
 import ny/core/types/strategy_base
 
-
-var gChannels = initTable[string, tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]]]()
+var gChanLock: RLock
+var gChannels {.guard: gChanLock.} = initTable[string, tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]]]()
 var gTimerChan = none[Chan[TimerChanMsg]]()
 
+gChanLock.initRLock()
 
 proc initChannelsForSymbol*(symbol: string) =
-  gChannels[symbol] = (ic: newChan[InputEvent](), oc: newChan[OutputEvent]())
+  withRLock(gChanLock):
+    {.gcsafe.}:
+      gChannels[symbol] = (ic: newChan[InputEvent](), oc: newChan[OutputEvent]())
 
 
-proc getChannelsForSymbol*(symbol: string): tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]] =
-  if symbol notin gChannels:
-    initChannelsForSymbol(symbol)
-  
-  return gChannels[symbol]
+proc getChannelsForSymbol*(symbol: string): tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]] {.gcsafe.} =
+  withRLock(gChanLock):
+    {.gcsafe.}:
+      if symbol notin gChannels:
+        initChannelsForSymbol(symbol)
+      
+      return gChannels[symbol]
 
 
 proc getTimerChannel*(): Chan[TimerChanMsg] =

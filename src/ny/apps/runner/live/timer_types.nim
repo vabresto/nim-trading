@@ -14,11 +14,10 @@ type
     DoneTimer
 
   TimerChanMsg* = object
+    symbol*: string
     case kind*: TimerChanMsgKind
     of CreateTimer:
       create*: RequestTimer
     of DoneTimer:
       done*: RespondTimer
   
-
-proc `<`*(a, b: TimerEvent): bool = a.timestamp < b.timestamp

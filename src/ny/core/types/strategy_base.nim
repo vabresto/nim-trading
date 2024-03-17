@@ -78,3 +78,6 @@ func timestamp*(rsp: InputEvent): Timestamp =
     rsp.md.timestamp
   of OrderUpdate:
     rsp.ou.timestamp
+
+
+func `<`*(a, b: TimerEvent): bool = a.timestamp < b.timestamp
