@@ -9,7 +9,7 @@ func makeOuStreamName*(date: string, symbol: string): string =
   "ou:" & date & ":" & symbol
 
 
-proc makeReadMdStreamsCommand*(streams: Table[string, string], simulation: bool = false): seq[string] =
+proc makeReadStreamsCommand*(streams: Table[string, string], simulation: bool = false): seq[string] =
   result.add "XREAD"
   if simulation:
     result.add "COUNT"

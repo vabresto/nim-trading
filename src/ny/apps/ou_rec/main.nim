@@ -19,6 +19,7 @@ import ny/core/env/envs
 import ny/core/md/alpaca/ou_types
 import ny/core/md/utils
 import ny/core/types/timestamp
+import ny/core/utils/rec_parseopt
 import ny/core/utils/sim_utils
 
 
@@ -75,6 +76,8 @@ proc parseStreamResponse(val: RedisValue): ?!StreamResponse {.raises: [].} =
 
 
 proc main() =
+  let cliArgs = parseCliArgs()
+
   var redisInitialized = false
   var dbInitialized = false
 
@@ -99,25 +102,63 @@ proc main() =
       redisInitialized = true
       info "Redis connected"
 
-      let today = getNowUtc().toDateTime().getDateStr()
-      let mdFeed = db.getConfiguredMdFeed(today)
-      let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
-      if mdSymbols.len == 0:
-        error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-        quit 1
+      let today = if cliArgs.date.isSome:
+        let date = cliArgs.date.get.format("yyyy-MM-dd")
+        setIsSimulation(true)
+        info "Running for historical date", date
+        date
+      else:
+        let date = getNowUtc().toDateTime().getDateStr()
+        info "Running for live date", date
+        date
+
+      let mdSymbols = if cliArgs.symbols.len > 0:
+        let symbols = cliArgs.symbols
+        info "Running for manual override symbols", symbols
+        symbols
+      else:
+        let mdFeed = db.getConfiguredMdFeed(today)
+        let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
+        if mdSymbols.len == 0:
+          error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
+          quit 1
+        info "Running for db configured symbols", symbols=mdSymbols
+        mdSymbols
 
       var lastIds = initTable[string, string]()
+      var streamEventsProcessed = initTable[string, int64]()
+      var streamEventsExpected = initTable[string, int64]()
       for symbol in mdSymbols:
-        lastIds[makeOuStreamName(today, symbol)] = getInitialStreamId()
+        let streamName = makeOuStreamName(today, symbol)
+        lastIds[streamName] = getInitialStreamId()
+        streamEventsProcessed[streamName] = 0
+
+        if isSimuluation():
+          let res = redis.cmd(@["XLEN", streamName])
+          if res.isOk:
+            streamEventsExpected[streamName] = res[].num
+        else:
+          streamEventsExpected[streamName] = int64.high
 
       info "Running main loop ..."
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row
-        if getNowUtc().toDateTime().getDateStr() != today:
+        if cliArgs.date.isNone and getNowUtc().toDateTime().getDateStr() != today:
           break
 
-        redis.send(makeReadMdStreamsCommand(lastIds, simulation=isSimuluation()))
+        if isSimuluation():
+          var keepRunning = false
+          for symbol in mdSymbols:
+            let streamName = makeOuStreamName(today, symbol)
+            if streamEventsProcessed[streamName] < streamEventsExpected[streamName]:
+              keepRunning = true
+              break
+          if not keepRunning:
+            info "Done running sim, processed all events", streamEventsExpected, streamEventsProcessed
+            quit 0
+
+        redis.send(makeReadStreamsCommand(lastIds, simulation=isSimuluation()))
 
         let replyRaw = redis.receive()
         if replyRaw.isOk:
@@ -129,6 +170,7 @@ proc main() =
           if replyParseAttempt.isOk:
             let reply = replyParseAttempt[]
             lastIds[reply.stream] = reply.id
+            inc streamEventsProcessed[reply.stream]
 
             if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
               let recordTs = getNowUtc()
@@ -141,7 +183,7 @@ proc main() =
           else:
             warn "Reply parse failed", err=replyParseAttempt.error.msg
         else:
-          warn "Error receiving", err=replyRaw.error.msg #, cmd=makeReadMdStreamsCommand(lastIds, simulation=isSimuluation())
+          warn "Error receiving", err=replyRaw.error.msg
 
     except OSError:
       error "OSError", msg=getCurrentExceptionMsg()

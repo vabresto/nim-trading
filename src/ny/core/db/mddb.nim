@@ -78,7 +78,8 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
   INSERT INTO ny.raw_market_data
     (date, symbol, id, event_timestamp, receive_timestamp, recording_timestamp, type, raw_data)
   VALUES
-    (?, ?, ?, ?, ?, ?, ?, ?);
+    (?, ?, ?, ?, ?, ?, ?, ?)
+  ON CONFLICT (date, symbol, id) DO NOTHING;
   """,
     date,
     symbol,
@@ -96,7 +97,8 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
   INSERT INTO ny.parsed_market_data
     (date, symbol, id, type, parsed_data)
   VALUES
-    (?, ?, ?, ?, ?);
+    (?, ?, ?, ?, ?)
+  ON CONFLICT (date, symbol, id) DO NOTHING;
   """,
     date,
     symbol,
@@ -126,7 +128,8 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
       ?, ?, ?, ?,
       ?, ?,
       ?
-    );
+    )
+  ON CONFLICT (date, symbol, id) DO NOTHING;
   """,
     date,
     ou.symbol,
@@ -166,7 +169,8 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
       ?, ?, ?, ?,
       ?, ?,
       ?
-    );
+    )
+  ON CONFLICT (date, symbol, id) DO NOTHING;
   """,
     date,
     ou.symbol,
