@@ -12,7 +12,7 @@ import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
-import jsony
+# import jsony
 import nim_redis
 import ws
 

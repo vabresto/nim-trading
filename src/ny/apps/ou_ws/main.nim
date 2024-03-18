@@ -7,7 +7,7 @@ import std/selectors
 import std/times
 
 import chronicles except toJson
-import jsony
+# import jsony
 import nim_redis
 import ws
 

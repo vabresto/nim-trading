@@ -1,7 +1,7 @@
 ## This is a market data recorder
 ## It subscribes to a redis stream, and forwards the data into a db
 
-import std/enumerate
+# import std/enumerate
 import std/json
 import std/net
 import std/options
@@ -11,12 +11,12 @@ import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
-import jsony
+# import jsony
 import nim_redis
 
 import ny/core/db/mddb
 import ny/core/env/envs
-import ny/core/md/alpaca/types
+# import ny/core/md/alpaca/types
 import ny/core/md/utils
 import ny/core/types/timestamp
 import ny/core/utils/rec_parseopt
