@@ -109,18 +109,19 @@ proc main(simulated: bool) =
   try:
     if simulated:
       info "Starting SIMULATED runner ..."
-      var sim = initSimulator()
+      let date = if cliArgs.date.isSome:
+        cliArgs.date.get
+      else:
+        now()
+      let symbol = if cliArgs.symbols.len > 0:
+        cliArgs.symbols[0]
+      else:
+        "FAKEPACA"
+      var sim = initSimulator(date, symbol)
       sim.simulate()
       info "Simulated runner done"
     else:
       info "Starting LIVE runner ..."
-
-      createTimerThread()
-
-      var symbols = @["AMD"]
-      var runnerThreads = newSeq[Thread[RunnerThreadArgs]](symbols.len)
-      for idx, symbol in enumerate(symbols):
-        createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
 
       info "Starting redis ..."
       redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
@@ -156,6 +157,10 @@ proc main(simulated: bool) =
         info "Running for db configured symbols", symbols=mdSymbols
         mdSymbols
 
+      var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
+      for idx, symbol in enumerate(mdSymbols):
+        createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
+      createTimerThread()
       createMarketOutputThread(mdSymbols)
 
       var lastIds = initTable[string, string]()
@@ -277,4 +282,4 @@ proc main(simulated: bool) =
 
 
 when isMainModule:
-  main(false)
+  main(true)

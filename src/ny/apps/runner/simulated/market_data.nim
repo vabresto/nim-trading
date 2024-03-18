@@ -27,6 +27,8 @@ proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto
     """), date.format("YYYY'-'MM'-'dd"), symbol):
       let alpacaMd = row[1].fromJson(AlpacaMdWsReply)
 
+      echo "Got market data event", $alpacaMd
+
       case alpacaMd.kind
       of Quote:
         yield some MarketDataUpdate(

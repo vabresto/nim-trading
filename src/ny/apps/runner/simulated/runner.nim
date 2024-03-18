@@ -57,8 +57,7 @@ proc createEmptyOrderUpdateIterator(): auto =
     error "End of order update iterator?"
   )
 
-proc initSimulator*(): Simulator =
-  let date = dateTime(2024, mMar, 16)
+proc initSimulator*(date: Datetime, symbol: string): Simulator =
   let db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
 
   Simulator(
@@ -66,7 +65,7 @@ proc initSimulator*(): Simulator =
     curTime: 0.float,
     timers: initHeapQueue[TimerEvent](),
     timerItr: createEmptyTimerIterator(),
-    mdItr: createMarketDataIterator(db, "FAKEPACA", date),
+    mdItr: createMarketDataIterator(db, symbol, date),
     ouItr: createEmptyOrderUpdateIterator(),
   )
 
