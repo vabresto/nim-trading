@@ -18,6 +18,7 @@ import ny/core/md/alpaca/types
 import ny/core/types/timestamp
 # import ny/core/utils/rec_parseopt
 # import ny/core/utils/sim_utils
+import ny/core/md/alpaca/parsing
 
 type
   MdStreamResponse* = object
@@ -38,10 +39,11 @@ proc parseMdStreamResponse*(val: RedisValue): ?!MdStreamResponse {.raises: [].} 
       for curIdx, item in enumerate(inner.arr):
         case item.kind
         of SimpleString, BulkString:
-          if item.str == "md_parsed_data":
-            resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
+          # if item.str == "md_parsed_data":
+          #   resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
           if item.str == "md_raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
+            resp.mdReply = inner.arr[curIdx + 1].str.fromJson(AlpacaMdWsReply)
           if item.str == "md_receive_timestamp":
             resp.receiveTimestamp = inner.arr[curIdx + 1].str.parseTimestamp
         else:

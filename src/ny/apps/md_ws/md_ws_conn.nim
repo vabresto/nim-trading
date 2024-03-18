@@ -6,8 +6,9 @@ import jsony
 import ws as tf_ws
 
 import ny/core/md/alpaca/types
-import ny/apps/md_ws/parsing
+# import ny/apps/md_ws/parsing
 import ny/core/types/timestamp
+import ny/core/md/alpaca/parsing
 
 export types
 

@@ -9,6 +9,7 @@ import ws as tf_ws
 
 import ny/core/trading/types
 import ny/core/types/timestamp
+import ny/core/md/alpaca/ou_types
 
 
 logScope:
@@ -20,11 +21,11 @@ proc toString(str: seq[byte]): string =
   for ch in str:
     add(result, ch.char)
 
-proc renameHook*(v: var AlpacaOrder, fieldName: var string) =
-  if fieldName == "qty":
-    fieldName = "size"
+# proc renameHook*(v: var AlpacaOrder, fieldName: var string) =
+#   if fieldName == "qty":
+#     fieldName = "size"
 
-proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: WsOrderUpdate, receiveTs: Timestamp]]] {.async.} =
+proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: AlpacaOuWsReply, receiveTs: Timestamp]]] {.async.} =
   let rawPacket = if usesBinaryFrames:
     (await ws.receiveBinaryPacket()).toString()
   else:
@@ -34,15 +35,17 @@ proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Opt
 
   # Skip heartbeats
   if rawPacket == "":
-    return none[tuple[ou: WsOrderUpdate, receiveTs: Timestamp]]()
+    return none[tuple[ou: AlpacaOuWsReply, receiveTs: Timestamp]]()
 
-  var packet = rawPacket.fromJson(WsOrderUpdate)
+  info "Got packet", rawPacket
+
+  var packet = rawPacket.fromJson(AlpacaOuWsReply)
   packet.raw = rawPacket.parseJson
 
-  if "data" in packet.raw:
-    if "order" in packet.raw["data"]:
-      if "symbol" in packet.raw["data"]["order"]:
-        packet.symbol = packet.raw["data"]["order"]["symbol"].getStr()
+  # if "data" in packet.raw:
+  #   if "order" in packet.raw["data"]:
+  #     if "symbol" in packet.raw["data"]["order"]:
+  #       packet.symbol = packet.raw["data"]["order"]["symbol"].getStr()
 
   return some (packet, receiveTimestamp)
 

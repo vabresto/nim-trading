@@ -15,6 +15,7 @@ import ny/apps/ou_ws/ou_ws_conn
 import ny/core/env/envs
 import ny/core/md/utils
 import ny/core/types/timestamp
+import ny/core/md/alpaca/ou_types
 
 
 logScope:
@@ -57,18 +58,11 @@ proc main() {.raises: [].} =
 
         let reply = waitFor ws.receiveTradeUpdateReply(true)
         if reply.isSome:
-          let symbol: string = block:
-            if reply.get.ou.symbol != "":
-              reply.get.ou.symbol
-            else:
-              warn "Failed to get symbol"
-              continue
-          
-          let streamName = makeOuStreamName(today, symbol)
+          let streamName = makeOuStreamName(today, reply.get.ou.symbol)
           info "Writing to stream", streamName
           let writeResult = redis.cmd(@[
             "XADD", streamName, "*",
-            "ou_parsed_data", reply.get.ou.toJson(),
+            # "ou_parsed_data", reply.get.ou.toJson(),
             "ou_raw_data", $(reply.get.ou.raw),
             "ou_receive_timestamp", $reply.get.receiveTs,
           ])

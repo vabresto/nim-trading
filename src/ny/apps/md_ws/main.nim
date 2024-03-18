@@ -91,7 +91,7 @@ proc main() {.raises: [].} =
           let streamName = makeMdStreamName(today, symbol)
           let writeResult = redis.cmd(@[
             "XADD", streamName, "*",
-            "md_parsed_data", reply.toJson(),
+            # "md_parsed_data", reply.toJson(),
             "md_raw_data", $(replyBlock.rawMd[idx]),
             "md_receive_timestamp", $replyBlock.receiveTs,
           ])

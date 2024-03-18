@@ -4,7 +4,8 @@ import std/times
 import db_connector/db_postgres
 import jsony
 
-import ny/apps/md_ws/parsing
+# import ny/apps/md_ws/parsing
+import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/types
 import ny/core/md/md_types

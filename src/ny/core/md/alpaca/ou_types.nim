@@ -21,6 +21,17 @@ type
 
   AlpacaOuWsReply* = object
     stream*: string
-    symbol*: string
+    # symbol*: string
     data*: AlpacaOuWsData
     raw*: JsonNode
+
+proc renameHook*(v: var AlpacaOuWsDataOrder, fieldName: var string) =
+  if fieldName == "time_in_force":
+    fieldName = "tif"
+  elif fieldName == "order_type":
+    fieldName = "kind"
+  elif fieldName == "qty":
+    fieldName = "size"
+
+func symbol*(alpaca: AlpacaOuWsReply): string =
+  alpaca.data.order.symbol

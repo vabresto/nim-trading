@@ -128,14 +128,14 @@ proc main() =
             lastIds[reply.stream] = reply.id
             inc streamEventsProcessed[reply.stream]
 
-            if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
-              let recordTs = getNowUtc()
-              info "Got order update", ou=reply, recordTs
-              db.insertRawOuEvent(reply.id, today, reply.ouReply, reply.rawJson, reply.receiveTimestamp, recordTs)
-              inc numProcessed
+            # if reply.rawContents.arr.len >= 2 and reply.rawContents.arr[0].str == "data":
+            let recordTs = getNowUtc()
+            info "Got order update", ou=reply, recordTs
+            db.insertRawOuEvent(reply.id, today, reply.ouReply, reply.rawJson, reply.receiveTimestamp, recordTs)
+            inc numProcessed
 
-              if numProcessed mod kEventsProcessedHeartbeat == 0:
-                info "Total events processed", numProcessed
+            if numProcessed mod kEventsProcessedHeartbeat == 0:
+              info "Total events processed", numProcessed
           else:
             warn "Reply parse failed", err=replyParseAttempt.error.msg
         else:

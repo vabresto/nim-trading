@@ -39,18 +39,18 @@ type
     clientOrderId*: string
     raw*: JsonNode
 
-  WsOrderUpdateData* = object
-    event*: string
-    timestamp*: string
-    order*: AlpacaOrder
+  # WsOrderUpdateData* = object
+  #   event*: string
+  #   timestamp*: string
+  #   order*: AlpacaOrder
 
-  WsOrderUpdate* = object
-    stream*: string
-    data*: WsOrderUpdateData
+  # WsOrderUpdate* = object
+  #   stream*: string
+  #   data*: WsOrderUpdateData
 
-    # Added after the fact
-    symbol*: string
-    raw*: JsonNode
+  #   # Added after the fact
+  #   symbol*: string
+  #   raw*: JsonNode
 
 
 func `$`*(order: AlpacaOrderRef): string = $(order[])
@@ -197,7 +197,10 @@ proc dumpHook*(s: var string, v: AlpacaOrder) =
 
 
 proc renameHook*(v: var AlpacaOrder, fieldName: var string) =
+  echo "Probably should not be using this hook"
   if fieldName == "time_in_force":
     fieldName = "tif"
   elif fieldName == "order_type":
     fieldName = "kind"
+  elif fieldName == "qty":
+    fieldName = "size"
