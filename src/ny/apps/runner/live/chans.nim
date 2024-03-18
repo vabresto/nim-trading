@@ -10,9 +10,11 @@ import ny/core/types/strategy_base
 
 var gChanLock: RLock
 var gChannels {.guard: gChanLock.} = initTable[string, tuple[ic: Chan[InputEvent], oc: Chan[OutputEvent]]]()
-var gTimerChan = none[Chan[TimerChanMsg]]()
+var gTimerLock: RLock
+var gTimerChan {.guard: gTimerLock.} = none[Chan[TimerChanMsg]]()
 
 gChanLock.initRLock()
+gTimerLock.initRLock()
 
 proc initChannelsForSymbol*(symbol: string) =
   withRLock(gChanLock):
@@ -30,7 +32,8 @@ proc getChannelsForSymbol*(symbol: string): tuple[ic: Chan[InputEvent], oc: Chan
 
 
 proc getTimerChannel*(): Chan[TimerChanMsg] =
-  if gTimerChan.isNone:
-    info "Timer channel requested but none exists, creating a new one"
-    gTimerChan = some newChan[TimerChanMsg]()
-  gTimerChan.get
+  withRLock(gTimerLock):
+    if gTimerChan.isNone:
+      info "Timer channel requested but none exists, creating a new one"
+      gTimerChan = some newChan[TimerChanMsg]()
+    return gTimerChan.get
