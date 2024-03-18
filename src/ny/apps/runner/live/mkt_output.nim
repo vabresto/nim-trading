@@ -48,6 +48,7 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
     for (symbol, oc) in chans:
       var resp: OutputEvent
       if oc.tryRecv(resp):
+        info "Got output event", outputEvent=resp
         case resp.kind
         of Timer:
           timerChan.send(TimerChanMsg(symbol: symbol, kind: CreateTimer, create: RequestTimer(timer: resp.timer)))

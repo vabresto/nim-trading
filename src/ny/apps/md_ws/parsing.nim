@@ -215,23 +215,44 @@ proc parseHook*(s: string, i: var int, v: var AlpacaMdWsReply) =
     v = AlpacaMdWsReply(kind: kind, subscription: ($entry).fromJson(SubscriptionDetails))
     return
   of Trade:
+    # required in order to round trip
+    if "trade" in entry:
+      entry = entry["trade"]
     v = AlpacaMdWsReply(kind: kind, trade: ($entry).fromJson(TradeDetails))
     return
   of Quote:
+    # required in order to round trip
+    if "quote" in entry:
+      entry = entry["quote"]
     v = AlpacaMdWsReply(kind: kind, quote: ($entry).fromJson(QuoteDetails))
     return
   of BarMinute, BarDay, BarUpdated:
+    # required in order to round trip
+    if "bar" in entry:
+      entry = entry["bar"]
     v = AlpacaMdWsReply(kind: kind, bar: ($entry).fromJson(AlpacaBarDetails))
     return
   of TradeCorrection:
+    # required in order to round trip
+    if "tradeCorrection" in entry:
+      entry = entry["tradeCorrection"]
     v = AlpacaMdWsReply(kind: kind, tradeCorrection: ($entry).fromJson(TradeCorrectionDetails))
     return
   of TradeCancel:
+    # required in order to round trip
+    if "tradeCancel" in entry:
+      entry = entry["tradeCancel"]
     v = AlpacaMdWsReply(kind: kind, tradeCancel: ($entry).fromJson(TradeCancelDetails))
     return
   of PriceBands:
+    # required in order to round trip
+    if "priceBands" in entry:
+      entry = entry["priceBands"]
     v = AlpacaMdWsReply(kind: kind, priceBands: ($entry).fromJson(PriceBandDetails))
     return
   of TradingStatus:
+    # required in order to round trip
+    if "tradingStatus" in entry:
+      entry = entry["tradingStatus"]
     v = AlpacaMdWsReply(kind: kind, tradingStatus: ($entry).fromJson(TradingStatusDetails))
     return

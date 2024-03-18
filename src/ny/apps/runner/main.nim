@@ -1,15 +1,15 @@
 import std/enumerate
-import std/os
+# import std/os
 import std/tables
 import std/times
-import std/enumerate
-import std/json
+# import std/enumerate
+# import std/json
 import std/net
 import std/options
-import std/os
+# import std/os
 import std/strutils
-import std/tables
-import std/times
+# import std/tables
+# import std/times
 
 import chronicles
 import db_connector/db_postgres
@@ -19,15 +19,15 @@ import threading/channels
 import ny/apps/runner/live/chans
 import ny/apps/runner/live/runner as live_runner
 import ny/apps/runner/live/timer # used
-import ny/apps/runner/live/timer_types
-import ny/apps/runner/simulated/market_data
+# import ny/apps/runner/live/timer_types
+# import ny/apps/runner/simulated/market_data
 import ny/apps/runner/simulated/runner as sim_runner
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/types/strategy_base
 import ny/core/env/envs
-import ny/core/db/mddb
-import ny/core/env/envs
+# import ny/core/db/mddb
+# import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/utils
 import ny/core/types/timestamp
@@ -36,8 +36,8 @@ import ny/core/utils/sim_utils
 import ny/core/streams/stream_utils
 import ny/core/streams/ou_streams
 import ny/core/streams/md_streams
-import ny/core/types/strategy_base
-import ny/core/md/md_types
+# import ny/core/types/strategy_base
+# import ny/core/md/md_types
 import ny/core/md/alpaca/conversions
 import ny/apps/runner/live/mkt_output
 
@@ -239,6 +239,8 @@ proc main(simulated: bool) =
                 kind: OrderUpdate,
                 ou: internalOu[],
               )
+
+            info "Sending input event", inputEvent
             ic.send(inputEvent)
             
             inc numProcessed
