@@ -111,7 +111,7 @@ proc main() =
               keepRunning = true
               break
           if not keepRunning:
-            info "Done running sim, processed all events", streamEventsExpected, streamEventsProcessed
+            info "Done running ou sim, processed all events", streamEventsExpected, streamEventsProcessed
             quit 0
 
         redis.send(makeReadStreamsCommand(lastIds, simulation=isSimuluation()))
