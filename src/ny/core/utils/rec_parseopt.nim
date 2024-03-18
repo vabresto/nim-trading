@@ -23,7 +23,7 @@ proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs =
       if val == "":
         # Currently don't have any flags
         echo "ERROR: Got unbound flag: ", val
-        quit 1
+        quit 207
       else:
         case key
         of "date":
@@ -33,13 +33,13 @@ proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs =
           readingSymbols = true
         else:
           echo "ERROR: Got unknown options --", key, "=", val
-          quit 1
+          quit 208
     of cmdArgument:
       if readingSymbols:
         result.symbols.add key.toUpper
       else:
         echo "ERROR: Got unbound argument: ", val
-        quit 1
+        quit 209
 
 when isMainModule:
   echo parseCliArgs()

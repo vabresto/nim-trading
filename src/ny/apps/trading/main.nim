@@ -11,7 +11,7 @@ let client = initAlpacaClient(
 
 if not client.isOk:
   echo "Failed to create client"
-  quit 1
+  quit 205
 
 let orderSentResp = client[].sendOrder(makeLimitOrder("AAPL", Buy, Gtc, 100, "50.00", "test-order-id-071"))
 

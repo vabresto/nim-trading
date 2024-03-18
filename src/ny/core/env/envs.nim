@@ -16,5 +16,5 @@ proc loadOrQuit*(env: string): string =
   let opt = getOptEnv(env)
   if opt.isNone:
     error "Failed to load required env var, terminating", env
-    quit 1
+    quit 206
   opt.get

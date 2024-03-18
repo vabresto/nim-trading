@@ -11,13 +11,13 @@ type
 
   TimerChanMsgKind* = enum
     CreateTimer
-    DoneTimer
+    # DoneTimer
 
   TimerChanMsg* = object
     symbol*: string
     case kind*: TimerChanMsgKind
     of CreateTimer:
       create*: RequestTimer
-    of DoneTimer:
-      done*: RespondTimer
+    # of DoneTimer:
+    #   done*: RespondTimer
   

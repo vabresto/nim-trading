@@ -36,3 +36,11 @@ proc toSysSide*(s: AlpacaSideKind): SysSideKind =
     SysSideKind.Buy
   of Sell:
     SysSideKind.Sell
+
+
+proc toAlpacaSide*(s: SysSideKind): AlpacaSideKind =
+  case s
+  of SysSideKind.Buy:
+    AlpacaSideKind.Buy
+  of SysSideKind.Sell:
+    AlpacaSideKind.Sell

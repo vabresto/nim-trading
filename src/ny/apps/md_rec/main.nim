@@ -75,7 +75,7 @@ proc main() =
         let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
         if mdSymbols.len == 0:
           error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-          quit 1
+          quit 201
         info "Running for db configured symbols", symbols=mdSymbols
         mdSymbols
 

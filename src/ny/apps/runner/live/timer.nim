@@ -34,13 +34,13 @@ proc timerThreadEx() {.thread, raises: [].} =
       of CreateTimer:
         info "Creating timer", timer=msg.create.timer
         timers.push(QueuedTimerEvent(symbol: msg.symbol, event: msg.create.timer))
-      of DoneTimer:
-        # I think this case isn't needed and can be removed entirely
-        # The runner thread will periodically push timer events to this channel
-        # then this timmer thread will enqueue them in the heap, and when it is
-        # time, will forward the event directly to the strategy's input channel
-        # In other words, this timer thread is read-only from the timer channel
-        discard
+      # of DoneTimer:
+      #   # I think this case isn't needed and can be removed entirely
+      #   # The runner thread will periodically push timer events to this channel
+      #   # then this timmer thread will enqueue them in the heap, and when it is
+      #   # time, will forward the event directly to the strategy's input channel
+      #   # In other words, this timer thread is read-only from the timer channel
+      #   discard
 
     let nowTs = getNowUtc()
     while timers.len > 0 and timers[0].event.timestamp <= nowTs:

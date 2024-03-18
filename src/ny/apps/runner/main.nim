@@ -39,6 +39,7 @@ import ny/core/streams/md_streams
 import ny/core/types/strategy_base
 import ny/core/md/md_types
 import ny/core/md/alpaca/conversions
+import ny/apps/runner/live/mkt_output
 
 type
   MergedStreamKind = enum
@@ -150,9 +151,11 @@ proc main(simulated: bool) =
         let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
         if mdSymbols.len == 0:
           error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-          quit 1
+          quit 204
         info "Running for db configured symbols", symbols=mdSymbols
         mdSymbols
+
+      createMarketOutputThread(mdSymbols)
 
       var lastIds = initTable[string, string]()
       var streamEventsProcessed = initTable[string, int64]()
