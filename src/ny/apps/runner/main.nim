@@ -282,4 +282,4 @@ proc main(simulated: bool) =
 
 
 when isMainModule:
-  main(true)
+  main(false)
