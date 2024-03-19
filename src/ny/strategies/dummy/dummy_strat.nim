@@ -186,7 +186,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
   of MarketData:
     if update.kind == MarketData and update.md.kind == BarMinute:
       {.noSideEffect.}:
-        info "Strategy got bar", update, state=state.state
+        debug "Strategy got bar", update, state=state.state
 
     case state.state
     of WaitingForMomentum:

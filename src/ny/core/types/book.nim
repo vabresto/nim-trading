@@ -44,13 +44,11 @@ proc getOrder*(book: OrdersBook, id: string): Option[SysOrderRef] =
 
 
 proc removeOrder*(book: var OrdersBook, anyId: string): Option[SysOrderRef] =
-  info "Trying to remove order", anyId
   let order = block:
     let order = book.getOrder(anyId)
     if order.isSome:
       order.get
     else:
-      info "Failed to find", anyId
       return none[SysOrderRef]()
 
   book.byId.del(order.id)
@@ -60,7 +58,6 @@ proc removeOrder*(book: var OrdersBook, anyId: string): Option[SysOrderRef] =
   if book.byPrice[order.side][order.price].len == 0:
     book.byPrice[order.side].del(order.price)
 
-  info "Book final state", book
   some order
 
 
