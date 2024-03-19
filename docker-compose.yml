@@ -21,7 +21,7 @@ services:
     environment:
       REDIS_ARGS: "--requirepass ${MD_REDIS_PASS}"
 
-  market-data-hub:
+  market-data-websocket:
     image: project-ny
     command: /ny/bin/ny-md-ws
     depends_on:

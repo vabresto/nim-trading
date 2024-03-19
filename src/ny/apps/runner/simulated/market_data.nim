@@ -1,4 +1,5 @@
 import std/options
+import std/strformat
 import std/times
 
 import chronicles except toJson
@@ -17,15 +18,16 @@ logScope:
   topics = "sys sys:sim sim-market-data"
 
 
-proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =
+proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime, barsOnly: bool = true): auto =
   (iterator(): Option[MarketDataUpdate] =
-    for row in db.fastRows(sql("""
+    for row in db.fastRows(sql(fmt"""
     SELECT
       id, raw_data
     FROM ny.raw_market_data
     WHERE true
     AND date = ?
     AND symbol = ?
+    {(if barsOnly: "AND type = 'BarMinute'" else: "")}
     ORDER BY id
     """), date.format("YYYY'-'MM'-'dd"), symbol):
       let alpacaMd = row[1].fromJson(AlpacaMdWsReply)

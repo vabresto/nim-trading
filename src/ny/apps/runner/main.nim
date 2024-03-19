@@ -82,7 +82,7 @@ proc symbol(resp: MergedStreamResponse): Option[string] =
   of OrderUpdate:
     some resp.ou.ouReply.symbol
 
-proc main(simulated: bool) =
+proc main() =
   let cliArgs = parseCliArgs()
 
   var redisInitialized = false
@@ -95,15 +95,36 @@ proc main(simulated: bool) =
 
   var numProcessed = 0
 
+  let (date, dateStr) = if cliArgs.date.isSome:
+    let date = cliArgs.date.get
+    let dateStr = date.format("yyyy-MM-dd")
+    setIsSimulation(true)
+    info "Running for historical date", date=dateStr
+    (date, dateStr)
+  else:
+    let date = getNowUtc().toDateTime()
+    let dateStr = date.format("yyyy-MM-dd")
+    info "Running for live date", date=dateStr
+    (date, dateStr)
+
+  let mdSymbols = if cliArgs.symbols.len > 0:
+    let symbols = cliArgs.symbols
+    info "Running for manual override symbols", symbols
+    symbols
+  else:
+    let mdFeed = db.getConfiguredMdFeed(dateStr)
+    let mdSymbols = db.getConfiguredMdSymbols(dateStr, mdFeed)
+    if mdSymbols.len == 0:
+      error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
+      quit 204
+    info "Running for db configured symbols", symbols=mdSymbols
+    mdSymbols
+
   info "Running ..."
   
   try:
-    if simulated:
+    if isSimuluation():
       info "Starting SIMULATED runner ..."
-      let date = if cliArgs.date.isSome:
-        cliArgs.date.get
-      else:
-        now()
       let symbol = if cliArgs.symbols.len > 0:
         cliArgs.symbols[0]
       else:
@@ -125,29 +146,6 @@ proc main(simulated: bool) =
       info "Market data db connected"
       dbEverConnected = true
 
-      let today = if cliArgs.date.isSome:
-        let date = cliArgs.date.get.format("yyyy-MM-dd")
-        setIsSimulation(true)
-        info "Running for historical date", date
-        date
-      else:
-        let date = getNowUtc().toDateTime().getDateStr()
-        info "Running for live date", date
-        date
-
-      let mdSymbols = if cliArgs.symbols.len > 0:
-        let symbols = cliArgs.symbols
-        info "Running for manual override symbols", symbols
-        symbols
-      else:
-        let mdFeed = db.getConfiguredMdFeed(today)
-        let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
-        if mdSymbols.len == 0:
-          error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-          quit 204
-        info "Running for db configured symbols", symbols=mdSymbols
-        mdSymbols
-
       var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
       for idx, symbol in enumerate(mdSymbols):
         createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
@@ -158,7 +156,7 @@ proc main(simulated: bool) =
       var streamEventsProcessed = initTable[string, int64]()
       var streamEventsExpected = initTable[string, int64]()
       for symbol in mdSymbols:
-        for streamName in [makeMdStreamName(today, symbol), makeOuStreamName(today, symbol)]:
+        for streamName in [makeMdStreamName(dateStr, symbol), makeOuStreamName(dateStr, symbol)]:
           lastIds[streamName] = getInitialStreamId()
           streamEventsProcessed[streamName] = 0
 
@@ -172,13 +170,13 @@ proc main(simulated: bool) =
       while true:
         # We key by date; more efficient would be to only update this overnight, but whatever
         # This means we can just leave it running for multiple days in a row
-        if cliArgs.date.isNone and getNowUtc().toDateTime().getDateStr() != today:
+        if cliArgs.date.isNone and getNowUtc().toDateTime().getDateStr() != dateStr:
           break
 
         if isSimuluation():
           var keepRunning = false
           for symbol in mdSymbols:
-            let streamName = makeMdStreamName(today, symbol)
+            let streamName = makeMdStreamName(dateStr, symbol)
             if streamEventsProcessed[streamName] < streamEventsExpected[streamName]:
               keepRunning = true
               break
@@ -253,4 +251,4 @@ proc main(simulated: bool) =
 
 
 when isMainModule:
-  main(false)
+  main()
