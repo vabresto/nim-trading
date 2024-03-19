@@ -158,7 +158,7 @@ proc simulate*(sim: var Simulator) =
     case ev.kind
     of MarketData:
       case ev.md.kind
-      of Quote:
+      of Quote, BarMinute:
         let resps = matchingEngine.onMarketDataEvent(ev.md)
         for resp in resps:
           case resp.kind
@@ -169,6 +169,7 @@ proc simulate*(sim: var Simulator) =
           of MarketData:
             error "Got market data event from matchingEngine.onMarketDataEvent ?!", event=resp
       else:
+        debug "Got filtered market data event", ev
         discard
     of Timer, OrderUpdate:
       discard

@@ -111,6 +111,9 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
           delay += me.makeDelay()
 
 proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[InputEvent] =
+  if ev.timestamp < me.curTime:
+    error "New event timestamp before current timestamp", cur=me.curTime, old=ev.timestamp
+    quit 210
   me.curTime = ev.timestamp
   case ev.kind
   of Quote:
