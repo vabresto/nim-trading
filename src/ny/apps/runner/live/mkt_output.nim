@@ -1,4 +1,5 @@
 ## This module sends out market requests received from the models to the alpaca rest api
+import os
 
 import chronicles
 import questionable/results as qr
@@ -45,9 +46,11 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
 
   info "Starting output loop ..."
   while true:
+    var processedAny = false
     for (symbol, oc) in chans:
       var resp: OutputEvent
       if oc.tryRecv(resp):
+        processedAny = true
         info "Got output event", outputEvent=resp
         case resp.kind
         of Timer:
@@ -60,6 +63,11 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
           let orderCancelResp = client[].cancelOrder(resp.idToCancel.string)
           if not orderCancelResp:
             error "Failed to send order cancellation command", cmd=resp
+
+    if not processedAny:
+      # Add a sleep so we don't max out the cores
+      # Obviously slows down trading but not practically an issue for this project
+      sleep(1)
 
 
 proc createMarketOutputThread*(symbols: seq[string]) =

@@ -1,3 +1,5 @@
+import std/os
+
 import chronicles
 import threading/channels
 import std/isolation
@@ -32,6 +34,9 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
       let msg = block:
         var msg: InputEvent
         if not ic.tryRecv(msg):
+          # Add a sleep so we don't max out the cores
+          # Obviously slows down trading but not practically an issue for this project
+          sleep(1)
           continue
         msg
       

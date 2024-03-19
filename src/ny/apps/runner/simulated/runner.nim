@@ -146,15 +146,6 @@ proc simulate*(sim: var Simulator) =
 
   info "Running sim ..."
   for ev in eventItr(sim):
-
-    # @next:
-    # D wrap md events in a non-alpaca object
-    # D add a timestamp field to all response msg events (and move away from string type for it)
-    # D move most of the below logic to the matching engine
-    # - create internal type wrappers for common data types
-    # - implement the actual matching engine logic
-    # - might be ready to start implementing dummy strategies at that point?
-
     case ev.kind
     of MarketData:
       case ev.md.kind
