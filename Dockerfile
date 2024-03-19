@@ -27,7 +27,7 @@ RUN nimble refresh
 RUN nimble install --depsOnly
 
 COPY src src
-RUN nimble build -d:release
+RUN nimble build --mm:arc -d:release -d:danger -d:lto --passC:-flto --passL:-flto
 
 
 # STAGE 2
