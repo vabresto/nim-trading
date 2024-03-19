@@ -22,7 +22,7 @@ import ny/core/types/timestamp
 
 
 const kNumRequiredBarIncreases = 3
-const kCentsEnterDiscount = 15
+const kCentsEnterDiscount = 5
 
 logScope:
   topics = "strategy strat:dummy"
@@ -79,14 +79,14 @@ func makeOrderId(state: var DummyStrategyState): ClientOrderId =
 
 func calculateTotalFees*(state: var DummyStrategyState): tuple[regFee: Price, tafFee: Price] =
   # https://alpaca.markets/blog/reg-taf-fees/
-  let regFee = ceil(state.stratTotalNotionalSold.inCents.float * (1_000_000 / 8))
-  let tafFee = ceil(state.stratTotalSharesSold * 166 / 1_000_000)
+  let regFee = ceil(state.stratTotalNotionalSold.inCents.float * (8 / 1_000_000))
+  let tafFee = state.stratTotalSharesSold / 1_000_000 * 166
   ((regFee/100).parsePrice, tafFee.parsePrice)
 
 
 func removeOrder(state: var DummyStrategyState, update: InputEvent) =
   {.noSideEffect.}:
-    info "Closing order", id=update.ou.orderId
+    trace "Closing order", id=update.ou.orderId
   
   if update.ou.orderId in state.openOrders:
     state.openOrders.del update.ou.orderId
@@ -110,6 +110,7 @@ func handleFill(state: var DummyStrategyState, update: InputEvent) =
       state.position += fillAmt
       state.stratPnl -= eventPrice
       # For buys, we update the average price we bought at
+      # Note that this logic doesn't work if we can intermix buys and sells
       state.positionCost += eventPrice
       state.positionVwap = ((state.positionCost.dollars * 100 + state.positionCost.cents) / state.position) / 100
     of Sell:
@@ -154,7 +155,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
     if "[RESET-STATE]" in update.timer.name:
       {.noSideEffect.}:
-        info "Got reset state message from timer", curState=state.state, fees=state.calculateTotalFees
+        info "Got reset state message from timer", curState=state.state, position=state.position, posValue=state.positionCost, stratPnl=state.stratPnl, fees=state.calculateTotalFees
 
       for id in state.openOrders.keys:
         result &= OutputEvent(kind: OrderCancel, idToCancel: id)
@@ -165,6 +166,9 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
       if state.position > 0:
         state.state = ExitingPosition
         let clientOrderId = state.makeOrderId
+        let price = (state.positionVwap * 1.005).parsePrice # try to take 0.5% in profit
+        {.noSideEffect.}:
+          debug "Trying to exit at price", price
         let order = SysOrder(
           id: "---PENDING---".OrderId,
           clientOrderId: clientOrderId,
@@ -172,7 +176,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
           kind: Limit,
           tif: Day,
           size: state.position,
-          price: (state.positionVwap * 1.005).parsePrice, # try to take 0.5% in profit
+          price: price,
         )
         state.pendingOrders[clientOrderId] = order
         result &= @[
@@ -186,7 +190,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
   of MarketData:
     if update.kind == MarketData and update.md.kind == BarMinute:
       {.noSideEffect.}:
-        debug "Strategy got bar", update, state=state.state
+        trace "Strategy got bar", update, state=state.state
 
     case state.state
     of WaitingForMomentum:
@@ -198,7 +202,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
         if state.numConsecIncreases > kNumRequiredBarIncreases:
           {.noSideEffect.}:
-            info "Strategy got 3rd consec increase", update
+            info "Strategy got 3rd consec increase", update, stratPnl=state.stratPnl
           state.numConsecIncreases = 0
           state.state = WaitingForFill
 
@@ -222,7 +226,35 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
     of WaitingForFill:
       discard
     of ExitingPosition:
-      discard
+      if state.position <= 0:
+        state.state = WaitingForMomentum
+        state.numConsecIncreases = 0
+        {.noSideEffect.}:
+          info "Fully exited position, going to WaitingForMomentum"
+          return
+      
+      # Have some position
+      if state.pendingOrders.len == 0 and state.openOrders.len == 0:
+        # No open orders, let's send an order to fully close out our position
+        let clientOrderId = state.makeOrderId
+        let price = (state.positionVwap * 1.005).parsePrice # try to take 0.5% in profit
+        {.noSideEffect.}:
+          debug "Trying to exit at price", price
+        let order = SysOrder(
+          id: "---PENDING---".OrderId,
+          clientOrderId: clientOrderId,
+          side: Sell,
+          kind: Limit,
+          tif: Day,
+          size: state.position,
+          price: price,
+        )
+        state.pendingOrders[clientOrderId] = order
+        return @[
+            OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
+            OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for fill expired; restart"))
+          ]
+
 
   of OrderUpdate:
     {.noSideEffect.}:
@@ -250,8 +282,12 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         price: update.ou.price,
       )
     of FilledPartial:
+      {.noSideEffect.}:
+        info "Got partial fill", event=update, position=state.position, posValue=state.positionCost, stratPnl=state.stratPnl
       state.handleFill(update)
     of FilledFull:
+      {.noSideEffect.}:
+        info "Got full fill", event=update, position=state.position, posValue=state.positionCost, stratPnl=state.stratPnl
       state.handleFill(update)
       state.removeOrder(update)
     of Cancelled:

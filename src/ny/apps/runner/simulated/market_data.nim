@@ -18,19 +18,18 @@ logScope:
   topics = "sys sys:sim sim-market-data"
 
 
-proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime, barsOnly: bool = true): auto =
+proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =
   (iterator(): Option[MarketDataUpdate] =
     for row in db.fastRows(sql(fmt"""
     SELECT
-      id, raw_data
+      raw_data
     FROM ny.raw_market_data
     WHERE true
     AND date = ?
     AND symbol = ?
-    {(if barsOnly: "AND type = 'BarMinute'" else: "")}
-    ORDER BY id
+    ORDER BY event_timestamp, id
     """), date.format("YYYY'-'MM'-'dd"), symbol):
-      let alpacaMd = row[1].fromJson(AlpacaMdWsReply)
+      let alpacaMd = row[0].fromJson(AlpacaMdWsReply)
 
       case alpacaMd.kind
       of Quote:
