@@ -150,7 +150,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
   case update.kind
   of Timer:
     {.noSideEffect.}:
-      error "Got timer", timer=update.timer
+      debug "Got timer", timer=update.timer
 
     if "[RESET-STATE]" in update.timer.name:
       {.noSideEffect.}:
@@ -198,7 +198,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
         if state.numConsecIncreases > kNumRequiredBarIncreases:
           {.noSideEffect.}:
-            warn "Strategy got 3rd consec increase", update
+            info "Strategy got 3rd consec increase", update
           state.numConsecIncreases = 0
           state.state = WaitingForFill
 
@@ -226,7 +226,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
   of OrderUpdate:
     {.noSideEffect.}:
-      error "Strategy got order update event", update, ts=update.timestamp
+      trace "Strategy got order update event", update, ts=update.timestamp
     
     case update.ou.kind
     of New:

@@ -6,8 +6,9 @@ import ny/core/types/side
 import ny/core/types/tif
 
 type
-  OrderId* {.borrow.} = distinct string
-  ClientOrderId* {.borrow.} = distinct string
+  # Ideally we want these to be distinct strings, but need to implement serialization so we can log json
+  OrderId* {.borrow.} = string
+  ClientOrderId* {.borrow.} = string
 
   SysOrder* = object
     id*: OrderId = "".OrderId # set by the remote
@@ -31,19 +32,15 @@ type
 
 
 func `$`*(order: SysOrderRef): string = $(order[])
-func `$`*(id: OrderId): string {.borrow.}
-func `$`*(id: ClientOrderId): string {.borrow.}
+# func `$`*(id: OrderId): string {.borrow.}
+# func `$`*(id: ClientOrderId): string {.borrow.}
 
-func hash*(id: OrderId): Hash {.borrow.}
-func hash*(id: ClientOrderId): Hash {.borrow.}
+# func hash*(id: OrderId): Hash {.borrow.}
+# func hash*(id: ClientOrderId): Hash {.borrow.}
 func hash*(order: SysOrderRef): Hash = hash(order[])
 
-func `==`*(a, b: OrderId): bool {.borrow.}
-func `==`*(a, b: ClientOrderId): bool {.borrow.}
-func `==`*(a, b: SysOrderRef): bool =
-  {.noSideEffect.}:
-    echo "CALLING =="
-  a.clientOrderId == b.clientOrderId
+# func `==`*(a, b: OrderId): bool {.borrow.}
+# func `==`*(a, b: ClientOrderId): bool {.borrow.}
 
 func openInterest*(order: SysOrder): int =
   order.size - order.cumSharesFilled
