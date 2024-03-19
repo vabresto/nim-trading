@@ -112,6 +112,12 @@ proc main() =
     info "Running for manual override symbols", symbols
     symbols
   else:
+    info "Starting market data db ..."
+    db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
+    dbInitialized = true
+    info "Market data db connected"
+    dbEverConnected = true
+
     let mdFeed = db.getConfiguredMdFeed(dateStr)
     let mdSymbols = db.getConfiguredMdSymbols(dateStr, mdFeed)
     if mdSymbols.len == 0:
@@ -139,12 +145,6 @@ proc main() =
       redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
       redisInitialized = true
       info "Redis connected"
-
-      info "Starting market data db ..."
-      db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-      dbInitialized = true
-      info "Market data db connected"
-      dbEverConnected = true
 
       var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
       for idx, symbol in enumerate(mdSymbols):
