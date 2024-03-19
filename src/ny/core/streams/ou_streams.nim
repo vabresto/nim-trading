@@ -1,23 +1,13 @@
 import std/enumerate
 import std/json
 import std/net
-# import std/options
-# import std/os
-# import std/tables
-# import std/times
 
 import chronicles except toJson
-# import db_connector/db_postgres
 import jsony
 import nim_redis
 
-# import ny/core/db/mddb
-# import ny/core/env/envs
 import ny/core/md/alpaca/ou_types
-# import ny/core/md/utils
 import ny/core/types/timestamp
-# import ny/core/utils/rec_parseopt
-# import ny/core/utils/sim_utils
 
 
 type
@@ -39,8 +29,6 @@ proc parseOuStreamResponse*(val: RedisValue): ?!OuStreamResponse {.raises: [].} 
       for curIdx, item in enumerate(inner.arr):
         case item.kind
         of SimpleString, BulkString:
-          # if item.str == "ou_parsed_data":
-          #   resp.ouReply = inner.arr[curIdx + 1].str.fromJson(AlpacaOuWsReply)
           if item.str == "ou_raw_data":
             resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
             resp.ouReply = inner.arr[curIdx + 1].str.fromJson(AlpacaOuWsReply)

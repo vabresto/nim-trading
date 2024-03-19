@@ -14,6 +14,7 @@ import ny/core/types/strategy_base
 import ny/core/types/order
 import ny/core/types/side
 import ny/core/types/tif
+import ny/core/md/alpaca/parsing
 
 proc parseMarketDataUpdate*(alpaca: AlpacaMdWsReply): ?!MarketDataUpdate =
   case alpaca.kind
@@ -43,7 +44,7 @@ proc parseMarketDataUpdate*(alpaca: AlpacaMdWsReply): ?!MarketDataUpdate =
     return success MarketDataUpdate(
       timestamp: alpaca.tradingStatus.timestamp.parseTimestamp,
       kind: Status,
-      status: alpaca.tradingStatus.statusCode.parseMarketDataStatusUpdateKind,
+      status: alpaca.tradingStatus.statusCode.parseAlpacaMdTradingStatus,
     )
   else:
     return failure "Unable to convert alpaca message: " & $alpaca

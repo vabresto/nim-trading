@@ -1,12 +1,10 @@
 import std/asyncdispatch
 import std/json
 
-import chronicles except toJson
 import jsony
 import ws as tf_ws
 
 import ny/core/md/alpaca/types
-# import ny/apps/md_ws/parsing
 import ny/core/types/timestamp
 import ny/core/md/alpaca/parsing
 
@@ -23,7 +21,6 @@ type
 proc receiveMdWsReply*(ws: WebSocket): Future[MdWsReply] {.async.} =
   let rawReply = await ws.receiveStrPacket()
   let receiveTimestamp = getNowUtc()
-  info "Receive ts", ts=receiveTimestamp
   if rawReply == "":
     return MdWsReply(receiveTs: receiveTimestamp, parsedMd: @[], rawMd: @[])
   let parsed = rawReply.fromJson(seq[AlpacaMdWsReply])

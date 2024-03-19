@@ -21,7 +21,6 @@ type
 
   AlpacaOuWsReply* = object
     stream*: string
-    # symbol*: string
     data*: AlpacaOuWsData
     raw*: JsonNode
 

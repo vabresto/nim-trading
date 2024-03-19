@@ -7,9 +7,8 @@ import chronicles except toJson
 import jsony
 import ws as tf_ws
 
-# import ny/core/trading/types
-import ny/core/types/timestamp
 import ny/core/md/alpaca/ou_types
+import ny/core/types/timestamp
 
 
 logScope:
@@ -20,10 +19,6 @@ proc toString(str: seq[byte]): string =
   result = newStringOfCap(len(str))
   for ch in str:
     add(result, ch.char)
-
-# proc renameHook*(v: var AlpacaOrder, fieldName: var string) =
-#   if fieldName == "qty":
-#     fieldName = "size"
 
 proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Option[tuple[ou: AlpacaOuWsReply, receiveTs: Timestamp]]] {.async.} =
   let rawPacket = if usesBinaryFrames:
@@ -41,11 +36,6 @@ proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Opt
 
   var packet = rawPacket.fromJson(AlpacaOuWsReply)
   packet.raw = rawPacket.parseJson
-
-  # if "data" in packet.raw:
-  #   if "order" in packet.raw["data"]:
-  #     if "symbol" in packet.raw["data"]["order"]:
-  #       packet.symbol = packet.raw["data"]["order"]["symbol"].getStr()
 
   return some (packet, receiveTimestamp)
 

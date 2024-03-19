@@ -8,6 +8,7 @@ import ny/core/md/md_types
 
 
 proc parseAlpacaMdTradingStatus*(statusCode: string): MarketDataStatusUpdateKind =
+  # https://docs.alpaca.markets/docs/real-time-stock-pricing-data#status-codes
   case statusCode
   of "2", "H":
     Halt

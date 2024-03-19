@@ -13,6 +13,9 @@ var gChannels {.guard: gChanLock.} = initTable[string, tuple[ic: Chan[InputEvent
 var gTimerLock: RLock
 var gTimerChan {.guard: gTimerLock.} = none[Chan[TimerChanMsg]]()
 
+logScope:
+  topics = "sys sys:live live-chans"
+
 gChanLock.initRLock()
 gTimerLock.initRLock()
 

@@ -62,7 +62,6 @@ proc main() {.raises: [].} =
           info "Writing to stream", streamName
           let writeResult = redis.cmd(@[
             "XADD", streamName, "*",
-            # "ou_parsed_data", reply.get.ou.toJson(),
             "ou_raw_data", $(reply.get.ou.raw),
             "ou_receive_timestamp", $reply.get.receiveTs,
           ])

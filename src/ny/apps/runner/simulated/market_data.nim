@@ -1,17 +1,20 @@
 import std/options
 import std/times
 
+import chronicles except toJson
 import db_connector/db_postgres
 import jsony
 
-# import ny/apps/md_ws/parsing
-import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/parsing
 import ny/core/md/alpaca/types
 import ny/core/md/md_types
 import ny/core/types/md/bar_details
 import ny/core/types/price
 import ny/core/types/timestamp
+
+
+logScope:
+  topics = "sys sys:sim sim-market-data"
 
 
 proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =
@@ -26,8 +29,6 @@ proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto
     ORDER BY id
     """), date.format("YYYY'-'MM'-'dd"), symbol):
       let alpacaMd = row[1].fromJson(AlpacaMdWsReply)
-
-      echo "Got market data event", $alpacaMd
 
       case alpacaMd.kind
       of Quote:

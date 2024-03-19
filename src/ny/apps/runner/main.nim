@@ -1,15 +1,9 @@
 import std/enumerate
-# import std/os
 import std/tables
 import std/times
-# import std/enumerate
-# import std/json
 import std/net
 import std/options
-# import std/os
 import std/strutils
-# import std/tables
-# import std/times
 
 import chronicles
 import db_connector/db_postgres
@@ -19,15 +13,11 @@ import threading/channels
 import ny/apps/runner/live/chans
 import ny/apps/runner/live/runner as live_runner
 import ny/apps/runner/live/timer # used
-# import ny/apps/runner/live/timer_types
-# import ny/apps/runner/simulated/market_data
 import ny/apps/runner/simulated/runner as sim_runner
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/types/strategy_base
 import ny/core/env/envs
-# import ny/core/db/mddb
-# import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/utils
 import ny/core/types/timestamp
@@ -36,11 +26,12 @@ import ny/core/utils/sim_utils
 import ny/core/streams/stream_utils
 import ny/core/streams/ou_streams
 import ny/core/streams/md_streams
-# import ny/core/types/strategy_base
-# import ny/core/md/md_types
 import ny/core/md/alpaca/conversions
 import ny/apps/runner/live/mkt_output
 import ny/core/md/alpaca/ou_types
+
+logScope:
+  topics = "sys runner"
 
 type
   MergedStreamKind = enum
@@ -246,7 +237,7 @@ proc main(simulated: bool) =
                 ou: internalOu[],
               )
 
-            info "Sending input event", inputEvent
+            trace "Sending input event", inputEvent
             ic.send(inputEvent)
             
             inc numProcessed
@@ -255,26 +246,6 @@ proc main(simulated: bool) =
         else:
           warn "Error receiving", err=replyRaw.error.msg
 
-      # sleep(1000)
-      # info "Sending message"
-      # let (ic, oc) = getChannelsForSymbol(symbol)
-      # let tc = getTimerChannel()
-      # ic.send(InputEvent(kind: Timer))
-
-      # var resp: OutputEvent
-      # oc.recv(resp)
-      # info "Main got", resp
-
-      # if resp.kind == Timer:
-      #   tc.send(TimerChanMsg(kind: CreateTimer, create: RequestTimer(timer: resp.timer)))
-      
-      # sleep(1000)
-
-      # let db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-      # let mdItr = createMarketDataIterator(db, "FAKEPACA", dateTime(2024, mMar, 15))
-      # for row in mdItr():
-      #   info "Got md", row
-  
   except DbError:
     error "Failed to connect to db to start simulation", msg=getCurrentExceptionMsg()
   except Exception:
