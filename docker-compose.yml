@@ -31,6 +31,8 @@ services:
       - db_net
       - redis_net
     environment:
+      # Just for logs; need to be a bit careful not to accidentally use local times though
+      TZ: America/New_York
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
       # Readonly usage to get configs
@@ -51,6 +53,7 @@ services:
       - db_net
       - redis_net
     environment:
+      TZ: America/New_York
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
       MD_PG_HOST: ${MD_PG_HOST}
@@ -68,6 +71,7 @@ services:
       - db_net
       - redis_net
     environment:
+      TZ: America/New_York
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
       MD_PG_HOST: ${MD_PG_HOST}
@@ -85,6 +89,7 @@ services:
       - db_net
       - redis_net
     environment:
+      TZ: America/New_York
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
       # Readonly usage to get configs
@@ -105,6 +110,7 @@ services:
       - db_net
       - redis_net
     environment:
+      TZ: America/New_York
       MD_REDIS_HOST: ${MD_REDIS_HOST}
       MD_REDIS_PASS: ${MD_REDIS_PASS}
       # Readonly usage to get configs

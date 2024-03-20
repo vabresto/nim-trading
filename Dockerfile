@@ -33,7 +33,7 @@ RUN nimble build --mm:arc -d:release -d:danger -d:lto --passC:-flto --passL:-flt
 # STAGE 2
 FROM alpine as runtime
 
-RUN apk add --update --no-cache libpq-dev
+RUN apk add --update --no-cache libpq-dev tzdata
 
 WORKDIR /ny
 
