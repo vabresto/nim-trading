@@ -109,7 +109,7 @@ proc insertRawMdEvent*(db: DbConn, id: string, date: string, event: AlpacaMdWsRe
   )
 
 
-proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, rawJson: JsonNode, receiveTimestamp: Timestamp, recordingTimestamp: Timestamp) =
+proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply, receiveTimestamp: Timestamp, recordingTimestamp: Timestamp) =
   db.exec(sql"""
   INSERT INTO ny.raw_order_updates
     (
@@ -150,7 +150,7 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
     ou.data.order.kind,
     ou.data.order.tif,
 
-    rawJson,
+    ou.raw,
   )
 
   db.exec(sql"""

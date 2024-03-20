@@ -15,7 +15,6 @@ type
     stream*: string
     id*: string
     rawContents*: RedisValue
-    rawJson*: JsonNode
     ouReply*: AlpacaOuWsReply
     receiveTimestamp*: Timestamp
 
@@ -30,8 +29,8 @@ proc parseOuStreamResponse*(val: RedisValue): ?!OuStreamResponse {.raises: [].} 
         case item.kind
         of SimpleString, BulkString:
           if item.str == "ou_raw_data":
-            resp.rawJson = inner.arr[curIdx + 1].str.parseJson()
             resp.ouReply = inner.arr[curIdx + 1].str.fromJson(AlpacaOuWsReply)
+            resp.ouReply.raw = inner.arr[curIdx + 1].str.parseJson()
           if item.str == "ou_receive_timestamp":
             resp.receiveTimestamp = inner.arr[curIdx + 1].str.parseTimestamp
         else:
