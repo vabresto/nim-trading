@@ -8,10 +8,13 @@ import threading/channels
 
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
+import ny/core/types/tif
 import ny/apps/runner/live/timer_types
 import ny/core/env/envs
 import ny/core/trading/client as trading_client
+import ny/core/trading/enums/order_kind
 import ny/core/trading/types
+import ny/core/trading/enums/tif
 
 logScope:
   topics = "sys sys:live live-output"
@@ -56,7 +59,14 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
         of Timer:
           timerChan.send(TimerChanMsg(symbol: symbol, kind: CreateTimer, create: RequestTimer(timer: resp.timer)))
         of OrderSend:
-          let orderSentResp = client[].sendOrder(makeLimitOrder(symbol, resp.side.toAlpacaSide, Day, resp.quantity, $resp.price, resp.clientOrderId.string))
+          let orderSentResp = case resp.orderKind:
+            of Limit:
+              client[].sendOrder(makeLimitOrder(symbol, resp.side.toAlpacaSide, resp.tif.toAlpacaTif, resp.quantity, $resp.price, resp.clientOrderId.string))
+            of Market:
+              if resp.tif == TifKind.Day:
+                client[].sendOrder(makeMarketOrder(symbol, resp.side.toAlpacaSide, resp.quantity, resp.clientOrderId.string))
+              else:
+                client[].sendOrder(makeMarketOnCloseOrder(symbol, resp.side.toAlpacaSide, resp.quantity, resp.clientOrderId.string))
           if orderSentResp.isErr:
             error "Failed to send order creation command", cmd=resp, err=orderSentResp.error.msg
         of OrderCancel:

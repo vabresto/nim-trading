@@ -162,7 +162,9 @@ proc simulate*(sim: var Simulator) =
       else:
         debug "Got filtered market data event", ev
         discard
-    of Timer, OrderUpdate:
+    of Timer:
+      matchingEngine.curTime = ev.timer.timestamp
+    of OrderUpdate:
       discard
 
     let cmds = strategyState.executeDummyStrategy(ev)

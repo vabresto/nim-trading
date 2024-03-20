@@ -32,10 +32,13 @@ type
     WaitingForMomentum
     WaitingForFill
     ExitingPosition
+    EodClose
 
   DummyStrategyState* = object of StrategyBase
     state: StateKind = WaitingForMomentum
     curTime: Timestamp
+
+    sentEodTimer: bool = false
     
     numConsecIncreases: int = 0
     lastBar: Option[BarDetails]
@@ -133,6 +136,16 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
     debug "Strategy got event", update, ts=update.timestamp, state
 
   inc state.curEventNum
+  state.curTime = update.timestamp
+
+  if not state.sentEodTimer:
+    state.sentEodTimer = true
+    result &= @[
+      OutputEvent(kind: Timer, timer: TimerEvent(
+        # Note: doesn't handle DST or early closes
+        timestamp: (state.curTime.toDateTime.format("yyyy-MM-dd") & "T19:59:45.000000000Z").parseTimestamp,
+        name: "[EOD-CLOSE] Closing out position to end the day flat")),
+    ]
 
   # This is not ideal, but it gives us a way to stop the strategy, especially in sim mode
   # We don't send enough events to trigger the stop normally either, so this seems acceptable but not ideal
@@ -146,12 +159,42 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
       info "Hit max events; closing out", eventNum=state.curEventNum
     return
 
-  state.curTime = update.timestamp
+  logScope:
+    curTime = state.curTime
 
   case update.kind
   of Timer:
     {.noSideEffect.}:
       debug "Got timer", timer=update.timer
+
+    if "[EOD-CLOSE]" in update.timer.name:
+      state.state = EodClose
+      {.noSideEffect.}:
+        info "Got EOD close message from timer", curState=state.state, position=state.position, posValue=state.positionCost, stratPnl=state.stratPnl, fees=state.calculateTotalFees
+
+      for id in state.openOrders.keys:
+        result &= OutputEvent(kind: OrderCancel, idToCancel: id)
+        {.noSideEffect.}:
+          debug "Sending order cancel event", id
+
+      # If we had any fills, go to exit, otherwise, back to wait for momentum
+      if state.position > 0:
+        let clientOrderId = state.makeOrderId
+        let order = SysOrder(
+          id: "---PENDING---".OrderId,
+          clientOrderId: clientOrderId,
+          side: Sell,
+          kind: Market,
+          tif: ClosingAuction,
+          size: state.position,
+        )
+        state.pendingOrders[clientOrderId] = order
+        result &= @[
+          OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price, orderKind: Market, tif: ClosingAuction),
+        ]
+
+    if state.state == EodClose:
+      return
 
     if "[RESET-STATE]" in update.timer.name:
       {.noSideEffect.}:
@@ -180,7 +223,7 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         )
         state.pendingOrders[clientOrderId] = order
         result &= @[
-          OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
+          OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price, orderKind: Limit, tif: Day),
           OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for exit expired; try again")),
         ]
       else:
@@ -218,12 +261,13 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
             # price: newBar.highPrice, # for debug
           )
           state.pendingOrders[clientOrderId] = order
-          return @[
-            OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
+          result &= @[
+            OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price, orderKind: Limit, tif: Day),
             OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for fill expired; restart"))
           ]
+          return
 
-    of WaitingForFill:
+    of WaitingForFill, EodClose:
       discard
     of ExitingPosition:
       if state.position <= 0:
@@ -250,10 +294,11 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
           price: price,
         )
         state.pendingOrders[clientOrderId] = order
-        return @[
-            OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price),
-            OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for fill expired; restart"))
+        result &= @[
+            OutputEvent(kind: OrderSend, clientOrderId: clientOrderId, side: order.side, quantity: order.size, price: order.price, orderKind: Limit, tif: Day),
+            OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for fill expired; restart")),
           ]
+        return
 
 
   of OrderUpdate:

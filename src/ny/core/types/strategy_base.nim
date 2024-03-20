@@ -1,5 +1,6 @@
 import ny/core/md/md_types
 import ny/core/types/order
+import ny/core/types/order_kind
 import ny/core/types/price
 import ny/core/types/side
 import ny/core/types/tif
@@ -66,6 +67,8 @@ type
       side*: SysSideKind
       quantity*: int
       price*: Price
+      orderKind*: OrderKind
+      tif*: TifKind
     of OrderCancel:
       idToCancel*: OrderId # exchange id
 

@@ -1,5 +1,6 @@
 import jsony
 
+import ny/core/types/order_kind
 
 type
   AlpacaOrderKind* = enum
@@ -39,3 +40,11 @@ proc parseHook*(s: string, i: var int, v: var AlpacaOrderKind) =
   var parsed: string
   parseHook(s, i, parsed)
   v = enumHook(parsed)
+
+
+proc toAlpacaOrderKind*(ok: OrderKind): AlpacaOrderKind =
+  case ok
+  of OrderKind.Limit:
+    AlpacaOrderKind.Limit
+  of OrderKind.Market:
+    AlpacaOrderKind.Market

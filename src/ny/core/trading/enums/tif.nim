@@ -1,5 +1,6 @@
 import jsony
 
+import ny/core/types/tif
 
 type
   AlpacaTifKind* = enum
@@ -43,3 +44,11 @@ proc parseHook*(s: string, i: var int, v: var AlpacaTifKind) =
   var parsed: string
   parseHook(s, i, parsed)
   v = enumHook(parsed)
+
+
+proc toAlpacaTif*(tif: TifKind): AlpacaTifKind =
+  case tif
+  of TifKind.Day:
+    AlpacaTifKind.Day
+  of TifKind.ClosingAuction:
+    AlpacaTifKind.ClosingAuction
