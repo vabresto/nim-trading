@@ -23,7 +23,7 @@ logScope:
   topics = "ny-ou-ws"
 
 
-const kEventsProcessedHeartbeat = 10
+const kEventsProcessedHeartbeat = 100
 
 
 proc main() {.raises: [].} =

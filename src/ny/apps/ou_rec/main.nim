@@ -28,7 +28,7 @@ logScope:
   topics = "ny-ou-rec"
 
 
-const kEventsProcessedHeartbeat = 10
+const kEventsProcessedHeartbeat: int = 100
 
 
 proc main() =

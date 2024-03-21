@@ -26,7 +26,7 @@ import ny/core/utils/rec_parseopt
 logScope:
   topics = "ny-md-rec"
 
-const kEventsProcessedHeartbeat = 1_000
+const kEventsProcessedHeartbeat = 5_000
 
 proc main() =
   let cliArgs = parseCliArgs()

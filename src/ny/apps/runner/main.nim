@@ -48,7 +48,7 @@ type
     of OrderUpdate:
       ou: OuStreamResponse
 
-const kEventsProcessedHeartbeat = 25
+const kEventsProcessedHeartbeat = 5_000
 
 proc parseMergedStreamResponse(val: RedisValue): ?!MergedStreamResponse =
   # Need to parse both md and ou stream data
