@@ -30,8 +30,9 @@ create table if not exists ny.parsed_market_data (
 
 CREATE OR REPLACE VIEW ny.market_data_time_diffs AS
 SELECT
-	id,
+  date,
   symbol,
+	id,
   event_timestamp at time zone 'America/New_York' as ev_ts,
   receive_timestamp at time zone 'America/New_York' as rcv_ts,
   recording_timestamp at time zone 'America/New_York' as rcd_ts,
