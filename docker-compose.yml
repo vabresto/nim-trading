@@ -20,6 +20,9 @@ services:
       - redis_data:/data
     networks:
       - redis_net
+    ports:
+      - 8001:8001
+      # - 6379:6379
     environment:
       REDIS_ARGS: "--requirepass ${MD_REDIS_PASS}"
 
