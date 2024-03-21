@@ -8,10 +8,6 @@ import questionable/results as qr
 import results
 
 import ny/core/trading/types
-import ny/core/types/order
-import ny/core/types/price
-import ny/core/types/side
-import ny/core/types/tif
 
 export qr
 export results

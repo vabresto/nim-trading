@@ -12,10 +12,8 @@ import ny/core/types/tif
 import ny/apps/runner/live/timer_types
 import ny/core/env/envs
 import ny/core/trading/client as trading_client
-import ny/core/trading/enums/order_kind
 import ny/core/trading/types
 import ny/core/trading/enums/tif
-import ny/core/types/price
 
 logScope:
   topics = "sys sys:live live-output"
@@ -62,7 +60,7 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
         of OrderSend:
           let orderSentResp = case resp.orderKind:
             of Limit:
-              client[].sendOrder(makeLimitOrder(symbol, resp.side.toAlpacaSide, resp.tif.toAlpacaTif, resp.quantity, $resp.price, resp.clientOrderId.string))
+              client[].sendOrder(makeLimitOrder(symbol, resp.side.toAlpacaSide, resp.tif.toAlpacaTif, resp.quantity, resp.price, resp.clientOrderId.string))
             of Market:
               if resp.tif == TifKind.Day:
                 client[].sendOrder(makeMarketOrder(symbol, resp.side.toAlpacaSide, resp.quantity, resp.clientOrderId.string))
