@@ -1,5 +1,3 @@
-import std/os
-
 import chronicles
 import threading/channels
 import std/isolation

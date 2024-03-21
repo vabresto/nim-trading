@@ -20,7 +20,6 @@ import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/md/utils
 import ny/core/types/timestamp
-import ny/core/heartbeat/server
 import ny/core/utils/rec_parseopt
 
 
@@ -33,10 +32,6 @@ const kEventsProcessedHeartbeat = 5_000
 
 proc main() {.raises: [].} =
   let cliArgs = parseCliArgs()
-  if cliArgs.heartbeat:
-    startHeartbeatServerThread()
-  else:
-    info "Heartbeat not enabled"
 
   var redisInitialized = false
   var dbInitialized = false

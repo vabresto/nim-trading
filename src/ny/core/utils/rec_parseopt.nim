@@ -7,6 +7,8 @@ import std/times
 
 import chronicles
 
+import ny/core/heartbeat/server
+
 logScope:
   topics = "sys sys:cli-args"
 
@@ -56,6 +58,11 @@ proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs {.raises: [].} =
       else:
         error "Got unbound argument: ", val
         quit 209
+  
+  if result.heartbeat:
+    startHeartbeatServerThread()
+  else:
+    info "Heartbeat not enabled"
 
 when isMainModule:
   echo parseCliArgs()
