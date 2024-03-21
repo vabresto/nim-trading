@@ -29,6 +29,7 @@ import ny/core/streams/md_streams
 import ny/core/md/alpaca/conversions
 import ny/apps/runner/live/mkt_output
 import ny/core/md/alpaca/ou_types
+import ny/core/heartbeat/server
 
 logScope:
   topics = "sys runner"
@@ -84,6 +85,8 @@ proc symbol(resp: MergedStreamResponse): Option[string] =
 
 proc main() =
   let cliArgs = parseCliArgs()
+  if cliArgs.heartbeat:
+    startHeartbeatServerThread()
 
   var redisInitialized = false
   var dbInitialized = false

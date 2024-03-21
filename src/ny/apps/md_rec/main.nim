@@ -19,6 +19,8 @@ import ny/core/types/timestamp
 import ny/core/utils/rec_parseopt
 import ny/core/utils/sim_utils
 import ny/core/streams/md_streams
+import ny/core/heartbeat/server
+import ny/core/utils/rec_parseopt
 
 
 logScope:
@@ -28,6 +30,10 @@ const kEventsProcessedHeartbeat = 1_000
 
 proc main() =
   let cliArgs = parseCliArgs()
+  if cliArgs.heartbeat:
+    startHeartbeatServerThread()
+  else:
+    info "Heartbeat not enabled"
 
   var redisInitialized = false
   var dbInitialized = false

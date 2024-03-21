@@ -25,7 +25,7 @@ services:
 
   market-data-websocket:
     image: project-ny
-    command: /ny/bin/ny-md-ws
+    command: /ny/bin/ny-md-ws --heartbeat
     restart: always
     depends_on:
       - db
@@ -48,7 +48,7 @@ services:
   
   market-data-recorder:
     image: project-ny
-    command: /ny/bin/ny-md-rec
+    command: /ny/bin/ny-md-rec --heartbeat
     restart: always
     depends_on:
       - db
@@ -67,7 +67,7 @@ services:
 
   order-update-recorder:
     image: project-ny
-    command: /ny/bin/ny-ou-rec
+    command: /ny/bin/ny-ou-rec --heartbeat
     restart: always
     depends_on:
       - db
@@ -86,7 +86,7 @@ services:
 
   order-update-websocket:
     image: project-ny
-    command: /ny/bin/ny-ou-ws
+    command: /ny/bin/ny-ou-ws --heartbeat
     restart: always
     depends_on:
       - db
@@ -108,7 +108,7 @@ services:
 
   runner-strategy-dummy:
     image: project-ny
-    command: /ny/bin/ny-runner
+    command: /ny/bin/ny-runner --heartbeat
     restart: always
     depends_on:
       - db

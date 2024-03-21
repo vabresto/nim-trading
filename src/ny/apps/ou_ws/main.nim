@@ -7,7 +7,6 @@ import std/selectors
 import std/times
 
 import chronicles except toJson
-# import jsony
 import nim_redis
 import ws
 
@@ -16,6 +15,8 @@ import ny/core/env/envs
 import ny/core/md/utils
 import ny/core/types/timestamp
 import ny/core/md/alpaca/ou_types
+import ny/core/heartbeat/server
+import ny/core/utils/rec_parseopt
 
 
 logScope:
@@ -26,6 +27,12 @@ const kEventsProcessedHeartbeat = 10
 
 
 proc main() {.raises: [].} =
+  let cliArgs = parseCliArgs()
+  if cliArgs.heartbeat:
+    startHeartbeatServerThread()
+  else:
+    info "Heartbeat not enabled"
+
   var redisInitialized = false
   var wsInitialized = false
 

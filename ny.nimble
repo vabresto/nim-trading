@@ -14,6 +14,9 @@ namedBin["ny/apps/ou_rec/main"] = "ny-ou-rec"
 namedBin["ny/apps/trading/main"] = "ny-trading"
 namedBin["ny/apps/runner/main"] = "ny-runner"
 
+namedBin["ny/core/heartbeat/client"] = "ny-heartbeat-client"
+namedBin["ny/core/heartbeat/server"] = "ny-heartbeat-server"
+
 
 # For some reason, running on mac requires setting `DYLD_LIBRARY_PATH=/usr/local/lib` before calling the binary ...
 
