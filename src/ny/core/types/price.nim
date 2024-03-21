@@ -6,7 +6,9 @@ type
     dollars*: int
     cents*: range[0 .. 99]
 
-func `$`*(p: Price): string = $p.dollars & "." & $p.cents
+func toPlainText*(p: Price): string = $p.dollars & "." & $p.cents
+
+func `$`*(p: Price): string = p.toPlainText
 
 func `<`*(a, b: Price): bool =
   if a.dollars == b.dollars:

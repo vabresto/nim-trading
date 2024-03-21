@@ -1,5 +1,6 @@
 import std/json
 import std/hashes
+import std/options
 
 import jsony
 
@@ -25,7 +26,7 @@ type
     size*: string = ""
     notional*: string = ""
 
-    limitPrice*: string = ""
+    limitPrice*: Option[Price]
     # stopPrice*: string = ""
     # trailPrice*: string = ""
     # trailPercent*: string = ""
@@ -40,20 +41,6 @@ type
     id*: string
     clientOrderId*: string
     raw*: JsonNode
-
-  # WsOrderUpdateData* = object
-  #   event*: string
-  #   timestamp*: string
-  #   order*: AlpacaOrder
-
-  # WsOrderUpdate* = object
-  #   stream*: string
-  #   data*: WsOrderUpdateData
-
-  #   # Added after the fact
-  #   symbol*: string
-  #   raw*: JsonNode
-
 
 func `$`*(order: AlpacaOrderRef): string = $(order[])
 func hash*(order: AlpacaOrderRef): Hash = hash(order[])
@@ -122,7 +109,7 @@ func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: i
   )
 
 
-func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
+func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: int, price: Price, clientOrderId: string): AlpacaOrder =
   ## IOC without price is Market
   AlpacaOrder(
     symbol: symbol,
@@ -130,33 +117,33 @@ func makeImmediateOrKillOrder*(symbol: string, side: AlpacaSideKind, quantity: i
     side: side,
     kind: Limit,
     tif: Ioc,
-    limitPrice: price,
+    limitPrice: some price,
     extendedHours: false,
     clientOrderId: clientOrderId,
   )
 
 
-func makeFillOrKillOrder*(symbol: string, side: AlpacaSideKind, kind: AlpacaOrderKind, quantity: int, price: string, clientOrderId: string): AlpacaOrder =
+func makeFillOrKillOrder*(symbol: string, side: AlpacaSideKind, kind: AlpacaOrderKind, quantity: int, price: Price, clientOrderId: string): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,
     side: side,
     kind: kind,
     tif: Fok,
-    limitPrice: price,
+    limitPrice: some price,
     extendedHours: false,
     clientOrderId: clientOrderId,
   )
 
 
-func makeLimitOrder*(symbol: string, side: AlpacaSideKind, tif: AlpacaTifKind, quantity: int, price: string, clientOrderId: string, extendedHours: bool = false): AlpacaOrder =
+func makeLimitOrder*(symbol: string, side: AlpacaSideKind, tif: AlpacaTifKind, quantity: int, price: Price, clientOrderId: string, extendedHours: bool = false): AlpacaOrder =
   AlpacaOrder(
     symbol: symbol,
     size: $quantity,
     side: side,
     kind: Limit,
     tif: tif,
-    limitPrice: price,
+    limitPrice: some price,
     extendedHours: extendedHours,
     clientOrderId: clientOrderId,
   )
@@ -181,9 +168,9 @@ proc dumpHook*(s: var string, v: AlpacaOrder) =
     s.add "\"notional\":"
     dumpHook(s, v.notional)
 
-  if v.limitPrice != "":
+  if v.limitPrice.isSome:
     s.add ",\"limit_price\":"
-    dumpHook(s, v.limitPrice)
+    dumpHook(s, v.limitPrice.get.toPlainText)
   
   # if v.stopPrice != "":
   #   s.add ",\"stop_price\":"
