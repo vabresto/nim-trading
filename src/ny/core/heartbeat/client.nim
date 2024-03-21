@@ -14,7 +14,7 @@ proc pingHeartbeat*(address: string, port: Port = kServerPort): bool {.raises: [
     client.connect(address, port)
 
     let response = client.recvLine()
-    info "Got heartbeat", response
+    trace "Got heartbeat", response
     true
   except TimeoutError:
     warn "Heartbeat timed out", address, port

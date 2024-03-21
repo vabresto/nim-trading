@@ -16,12 +16,12 @@ var heartbeatServerThread: Thread[void]
 
 proc handleClient(client: Socket) =
   let peer = client.getPeerAddr
-  info "Client connected", peerIp=peer[0], peerPort=peer[1]
+  trace "Client connected", peerIp=peer[0], peerPort=peer[1]
   let resp = %* {
     "now": $getNowUtc(),
   }
   client.send($resp & "\n")
-  info "Responded"
+  trace "Responded", peerIp=peer[0], peerPort=peer[1]
 
 proc serverLoop() =
   var server = newSocket()
