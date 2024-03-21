@@ -214,6 +214,62 @@
       "checksums": {
         "sha1": "af8413e23fc803311a2e706dc7b8d9b6f68c5de9"
       }
+    },
+    "webby": {
+      "version": "0.2.1",
+      "vcsRevision": "325d6ade0970562bee7d7d53961a2c3287f0c4bc",
+      "url": "https://github.com/treeform/webby/",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "1d9978ac16fdb56fad2ee9eaa0fcbb7860229d39"
+      }
+    },
+    "zippy": {
+      "version": "0.10.11",
+      "vcsRevision": "9560f3d20479fb390c97f731ef8d100f1ed54e6c",
+      "url": "https://github.com/guzba/zippy",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "12e761e18ccc0a1b0e931c74dd02bb4b74544d56"
+      }
+    },
+    "nimsimd": {
+      "version": "1.2.9",
+      "vcsRevision": "53fc47d10941944b7054d03464da27734979b491",
+      "url": "https://github.com/guzba/nimsimd",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "b5441b15234ae14c9e65a40f7b27837b9786a3d7"
+      }
+    },
+    "crunchy": {
+      "version": "0.1.11",
+      "vcsRevision": "98eb6526982bb8aae8eec6e8781f4539fa19e049",
+      "url": "https://github.com/guzba/crunchy",
+      "downloadMethod": "git",
+      "dependencies": [
+        "nimsimd"
+      ],
+      "checksums": {
+        "sha1": "d34f03fc0f6876dbf53f99601096728ec31f47a3"
+      }
+    },
+    "mummy": {
+      "version": "0.4.1",
+      "vcsRevision": "ea567b1a26c141c67dec366e2ca966a08a8732e8",
+      "url": "https://github.com/guzba/mummy",
+      "downloadMethod": "git",
+      "dependencies": [
+        "zippy",
+        "webby",
+        "crunchy"
+      ],
+      "checksums": {
+        "sha1": "4b42e2d861877701288ea069a743dc74b6786e02"
+      }
     }
   },
   "tasks": {}

@@ -8,7 +8,7 @@ import ny/core/heartbeat/shared
 logScope:
   topics = "sys sys:heartbeat:client"
 
-proc pingHeartbeat*(address: string, port: Port): bool {.raises: [].} =
+proc pingHeartbeat*(address: string, port: Port = kServerPort): bool {.raises: [].} =
   try:
     var client = newSocket()
     client.connect(address, port)

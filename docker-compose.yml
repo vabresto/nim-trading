@@ -128,6 +128,14 @@ services:
       ALPACA_API_KEY: ${ALPACA_API_KEY}
       ALPACA_API_SECRET: ${ALPACA_API_SECRET}
 
+  monitor:
+    image: project-ny
+    command: /ny/bin/ny-monitor
+    restart: always
+    environment:
+      TZ: America/New_York
+      NY_MON_TARGETS: "market-data-websocket, market-data-recorder, order-update-recorder, order-update-websocket, runner-strategy-dummy"
+
 
 volumes:
   db_data:
