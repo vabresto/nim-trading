@@ -141,7 +141,8 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
     result &= @[
       OutputEvent(kind: Timer, timer: TimerEvent(
         # Note: doesn't handle DST or early closes
-        timestamp: (state.curTime.toDateTime.format("yyyy-MM-dd") & "T19:59:45.000000000Z").parseTimestamp,
+        # Note: can't send MOC orders after 3:55 apparently
+        timestamp: (state.curTime.toDateTime.format("yyyy-MM-dd") & "T19:54:45.000000000Z").parseTimestamp,
         name: "[EOD-CLOSE] Closing out position to end the day flat")),
     ]
 
