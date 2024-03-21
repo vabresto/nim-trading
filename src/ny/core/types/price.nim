@@ -62,3 +62,6 @@ func parsePrice*(price: string): Price {.raises: [].} =
       Price(dollars: price.parseInt, cents: 0)
     except ValueError:
       kErrPrice
+
+proc dumpHook*(s: var string, v: Price) =
+  s.add($v.dollars & "." & $v.cents)

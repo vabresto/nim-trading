@@ -8,6 +8,10 @@ import questionable/results as qr
 import results
 
 import ny/core/trading/types
+import ny/core/types/order
+import ny/core/types/price
+import ny/core/types/side
+import ny/core/types/tif
 
 export qr
 export results
@@ -44,7 +48,7 @@ proc close*(alpaca: AlpacaClient) =
 proc sendOrder*(alpaca: AlpacaClient, order: AlpacaOrder): ?!OrderCreateResponse {.raises: [].} =
   ## For now, we don't support replacing. Simpler to just require a cancel and send a new order.
   try:
-    info "Sending order", order
+    info "Sending order", order, asJson=order.toJson()
     let resp = alpaca.client.request(alpaca.baseUrl & "/v2/orders", httpMethod=HttpPost, body=order.toJson())
     if resp.code == Http200:
       ## Example response
@@ -90,7 +94,8 @@ proc sendOrder*(alpaca: AlpacaClient, order: AlpacaOrder): ?!OrderCreateResponse
       let clientId = respBody["client_order_id"].getStr()
       return success OrderCreateResponse(id: id, clientOrderId: clientId, raw: respBody)
     else:
-      error "Failed to send order", status=resp.status
+      let respBody = resp.body.parseJson
+      error "Failed to send order", status=resp.status, respBody
       return failure "Failed to send order, response: " & resp.status
   except ValueError, HttpRequestError, OSError, IOError, TimeoutError, ProtocolError, KeyError, SslError:
     error "Failed to send order", error=getCurrentExceptionMsg()

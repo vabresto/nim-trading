@@ -15,6 +15,7 @@ import ny/core/trading/client as trading_client
 import ny/core/trading/enums/order_kind
 import ny/core/trading/types
 import ny/core/trading/enums/tif
+import ny/core/types/price
 
 logScope:
   topics = "sys sys:live live-output"

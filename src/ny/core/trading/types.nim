@@ -6,10 +6,12 @@ import jsony
 import ny/core/trading/enums/order_kind
 import ny/core/trading/enums/side
 import ny/core/trading/enums/tif
+import ny/core/types/price
 
 export order_kind
 export side
 export tif
+export price
 
 
 type
