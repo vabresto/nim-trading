@@ -65,11 +65,9 @@ type
     openOrders: Table[OrderId, SysOrder]
 
 
-func initDummyStrategy*(): DummyStrategyState =
-  {.noSideEffect.}:
-    let dateStr = getNowUtc().getDateStr()
+func initDummyStrategy*(orderIdBase: string): DummyStrategyState =
   DummyStrategyState(
-    orderIdBase: dateStr,
+    orderIdBase: orderIdBase,
     pendingOrders: initTable[ClientOrderId, SysOrder](),
     openOrders: initTable[OrderId, SysOrder](),
   )
@@ -77,7 +75,7 @@ func initDummyStrategy*(): DummyStrategyState =
 
 func makeOrderId(state: var DummyStrategyState): ClientOrderId =
   inc state.numOrdersSent
-  (state.orderIdBase & ":dummy:o-" & $state.numOrdersSent).ClientOrderId
+  (state.orderIdBase & "dummy:o-" & $state.numOrdersSent).ClientOrderId
 
 
 func calculateTotalFees*(state: var DummyStrategyState): tuple[regFee: Price, tafFee: Price] =
@@ -337,6 +335,9 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
       state.removeOrder(update)
     of Cancelled:
       state.removeOrder(update)
-    of Ack, CancelPending:
+    of Ack:
+      {.noSideEffect.}:
+        info "Got ack", event=update
+    of CancelPending:
       {.noSideEffect.}:
           error "Got unhandled order event!", event=update

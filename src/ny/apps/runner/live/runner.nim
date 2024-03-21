@@ -7,6 +7,7 @@ import std/isolation
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/strategies/dummy/dummy_strat
+import ny/core/types/timestamp
 
 
 logScope:
@@ -28,18 +29,13 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         error "Failed to initialize runner; quitting", args
         return
 
-    var state = initDummyStrategy()
+    {.noSideEffect.}:
+      let dateStr = getNowUtc().getDateStr()
+    var state = initDummyStrategy(dateStr & ":" & args.symbol & ":")
 
     while true:
-      let msg = block:
-        var msg: InputEvent
-        if not ic.tryRecv(msg):
-          # Add a sleep so we don't max out the cores
-          # Obviously slows down trading but not practically an issue for this project
-          sleep(1)
-          continue
-        msg
-      
+      let msg: InputEvent = ic.recv()
+  
       trace "Got message", msg
 
       var req = state.executeDummyStrategy(msg)
