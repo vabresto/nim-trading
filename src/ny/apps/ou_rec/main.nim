@@ -40,7 +40,7 @@ proc main() {.raises: [].} =
       info "Starting connections ..."
       withDb(db):
         withRedis(redis):
-          processStreams(cliArgs, db, redis, makeMdStreamName, today, lastIds, streamEventsProcessed):
+          processStreams(cliArgs, db, redis, makeOuStreamName, today, lastIds, streamEventsProcessed):
             let replyRaw = redis.receive()
             if replyRaw.isOk:
               if replyRaw[].kind == Error:
