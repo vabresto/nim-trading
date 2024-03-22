@@ -56,6 +56,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
       for (id, order) in me.book.byPrice[Buy][price].pairs:
         let fillAmt = min(order[].openInterest, exchangeSharesAvailable)
         if fillAmt > 0:
+          trace "Filling Buy", fillAmt, orderInterest=order[].openInterest, exchangeSharesAvailable
           if fillAmt == order[].openInterest:
             exchangeSharesAvailable -= fillAmt
             discard me.book.removeOrder(order.id.string)
@@ -87,6 +88,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
       for (id, order) in me.book.byPrice[Sell][price].pairs:
         let fillAmt = min(order[].openInterest, exchangeSharesAvailable)
         if fillAmt > 0:
+          trace "Filling Sell", fillAmt, orderInterest=order[].openInterest, exchangeSharesAvailable
           if fillAmt == order[].openInterest:
             exchangeSharesAvailable -= fillAmt
             discard me.book.removeOrder(order.id.string)
@@ -147,8 +149,8 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
       clientOrderId: msg.clientOrderId,
       side: msg.side,
       size: msg.quantity,
-      kind: Limit,
-      tif: Day,
+      kind: msg.orderKind,
+      tif: msg.tif,
       price: msg.price,
     )
 
@@ -159,7 +161,7 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
       kind: New,
       side: msg.side,
       size: msg.quantity,
-      tif: Day,
+      tif: msg.tif,
       price: msg.price,
     ))
 

@@ -1,5 +1,4 @@
 ## This module sends out market requests received from the models to the alpaca rest api
-import std/os
 import std/rlocks
 
 import chronicles

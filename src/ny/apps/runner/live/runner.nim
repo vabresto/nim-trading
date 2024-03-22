@@ -6,6 +6,7 @@ import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/strategies/dummy/dummy_strat
 import ny/core/types/timestamp
+import ny/core/types/strategy_base
 
 
 logScope:
@@ -28,17 +29,20 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         return
 
     let dateStr = getNowUtc().getDateStr()
-    var state = initDummyStrategy(dateStr & ":" & args.symbol & ":")
+    var strategy = initDummyStrategy(dateStr & ":" & args.symbol & ":")
 
     while true:
       let msg: InputEvent = ic.recv()
   
       trace "Got message", msg
 
-      var req = state.executeDummyStrategy(msg)
-      for item in req:
+      strategy.handleInputEvent(msg)
+      var resps = strategy.executeDummyStrategy(msg)
+      strategy.pruneDoneOrders()
+      for resp in resps:
         try:
-          trace "Strategy replied", msg, resp=item
-          oc.send(isolate(item))
+          trace "Strategy replied", msg, resp
+          strategy.handleOutputEvent(resp)
+          oc.send(isolate(resp))
         except Exception:
-          error "Failed to send request!", req
+          error "Failed to send request!", resp

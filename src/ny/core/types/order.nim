@@ -19,6 +19,7 @@ type
     size*: int
     price*: Price
     cumSharesFilled*: int = 0
+    done*: bool = false
 
   SysOrderRef* = ref SysOrder
 

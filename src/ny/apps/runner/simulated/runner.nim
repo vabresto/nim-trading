@@ -142,15 +142,15 @@ proc simulate*(sim: var Simulator) =
   
   info "Init state ..."
   var matchingEngine = initSimMatchingEngine()
-  var strategyState = initDummyStrategy("sim:")
+  var strategy = initDummyStrategy("sim:")
 
   info "Running sim ..."
-  for ev in eventItr(sim):
-    case ev.kind
+  for msg in eventItr(sim):
+    case msg.kind
     of MarketData:
-      case ev.md.kind
+      case msg.md.kind
       of Quote, BarMinute:
-        let resps = matchingEngine.onMarketDataEvent(ev.md)
+        let resps = matchingEngine.onMarketDataEvent(msg.md)
         for resp in resps:
           case resp.kind
           of Timer:
@@ -160,16 +160,18 @@ proc simulate*(sim: var Simulator) =
           of MarketData:
             error "Got market data event from matchingEngine.onMarketDataEvent ?!", event=resp
       else:
-        debug "Got filtered market data event", ev
+        debug "Got filtered market data event", msg
         discard
     of Timer:
-      matchingEngine.curTime = ev.timer.timestamp
+      matchingEngine.curTime = msg.timer.timestamp
     of OrderUpdate:
       discard
 
-    let cmds = strategyState.executeDummyStrategy(ev)
-
+    strategy.handleInputEvent(msg)
+    let cmds = strategy.executeDummyStrategy(msg)
+    strategy.pruneDoneOrders()
     for cmd in cmds:
+      strategy.handleOutputEvent(cmd)
       let resps = matchingEngine.onRequest(cmd)
       for resp in resps:
         case resp.kind
