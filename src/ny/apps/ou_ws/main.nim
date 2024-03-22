@@ -17,6 +17,8 @@ import ny/core/types/timestamp
 import ny/core/md/alpaca/ou_types
 import ny/core/utils/rec_parseopt
 
+import ny/core/services/redis
+
 
 logScope:
   topics = "ny-ou-ws"
@@ -26,54 +28,46 @@ const kEventsProcessedHeartbeat = 100
 
 
 proc main() {.raises: [].} =
-  let cliArgs = parseCliArgs()
+  discard parseCliArgs()
 
-  var redisInitialized = false
-  var wsInitialized = false
-
-  var redis: RedisClient
   var ws: WebSocket
+  var wsInitialized = false
 
   var numProcessed = 0
 
   while true:
     try:
       info "Starting connections ..."
+      withRedis(redis):
+        let today = getNowUtc().toDateTime().getDateStr()
 
-      let today = getNowUtc().toDateTime().getDateStr()
+        info "Starting trade updates websocket ..."
+        ws = waitFor initWebsocket("wss://paper-api.alpaca.markets/stream", loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
+        wsInitialized = true
+        info "Trade updates websocket connected"
 
-      info "Starting redis ..."
-      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
-      redisInitialized = true
-      info "Redis connected"
+        info "Running main loop ..."
+        while true:
+          # If we're on to the next day, reload the program to get the new config
+          if getNowUtc().toDateTime().getDateStr() != today:
+            break
 
-      info "Starting trade updates websocket ..."
-      ws = waitFor initWebsocket("wss://paper-api.alpaca.markets/stream", loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
-      wsInitialized = true
-      info "Trade updates websocket connected"
+          let reply = waitFor ws.receiveTradeUpdateReply(true)
+          if reply.isSome:
+            let streamName = makeOuStreamName(today, reply.get.ou.symbol)
+            info "Writing to stream", streamName
+            let writeResult = redis.cmd(@[
+              "XADD", streamName, "*",
+              "ou_raw_data", $(reply.get.ou.raw),
+              "ou_receive_timestamp", $reply.get.receiveTs,
+            ])
+            if not writeResult.isOk:
+              error "Write not ok", msg=writeResult.error.msg
+            else:
+              inc numProcessed
 
-      info "Running main loop ..."
-      while true:
-        # If we're on to the next day, reload the program to get the new config
-        if getNowUtc().toDateTime().getDateStr() != today:
-          break
-
-        let reply = waitFor ws.receiveTradeUpdateReply(true)
-        if reply.isSome:
-          let streamName = makeOuStreamName(today, reply.get.ou.symbol)
-          info "Writing to stream", streamName
-          let writeResult = redis.cmd(@[
-            "XADD", streamName, "*",
-            "ou_raw_data", $(reply.get.ou.raw),
-            "ou_receive_timestamp", $reply.get.receiveTs,
-          ])
-          if not writeResult.isOk:
-            error "Write not ok", msg=writeResult.error.msg
-          else:
-            inc numProcessed
-
-          if numProcessed mod kEventsProcessedHeartbeat == 0:
-            info "Total events processed", numProcessed
+            if numProcessed mod kEventsProcessedHeartbeat == 0:
+              info "Total events processed", numProcessed
 
     # Log any uncaught errors
     except OSError, ValueError, IOSelectorsException:
@@ -91,17 +85,6 @@ proc main() {.raises: [].} =
           error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
         except:
           wsInitialized = false
-
-      # Close redis
-      if redisInitialized:
-        try:
-          redis.close()
-        except SslError, LibraryError:
-          error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-        except Exception:
-          error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-        finally:
-          redisInitialized = false
 
       sleep(1_000)
 

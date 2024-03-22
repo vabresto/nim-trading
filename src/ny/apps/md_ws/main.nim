@@ -22,6 +22,10 @@ import ny/core/md/utils
 import ny/core/types/timestamp
 import ny/core/utils/rec_parseopt
 
+import ny/core/services/postgres
+import ny/core/services/redis
+import ny/core/services/cli_args
+
 
 logScope:
   topics = "ny-md-ws"
@@ -33,87 +37,58 @@ const kEventsProcessedHeartbeat = 5_000
 proc main() {.raises: [].} =
   let cliArgs = parseCliArgs()
 
-  var redisInitialized = false
-  var dbInitialized = false
-  var wsInitialized = false
-
-  var dbEverConnected = false
-
-  var redis: RedisClient
-  var db: DbConn
   var ws: WebSocket
+  var wsInitialized = false
 
   var numProcessed = 0
 
   while true:
     try:
       info "Starting connections ..."
-      info "Starting market data db ..."
-      db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-      dbInitialized = true
-      dbEverConnected = true
-      info "Market data db connected"
+      withDb(db):
+        withRedis(redis):
+          withCliArgs(cliArgs, db, today, mdSymbols, mdFeed):
 
-      let today = getNowUtc().toDateTime().getDateStr()
-      let mdFeed = db.getConfiguredMdFeed(today)
-      let mdSymbols = db.getConfiguredMdSymbols(today, mdFeed)
-      if mdSymbols.len == 0:
-        error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-        quit 202
+            info "Starting market data websocket ..."
+            ws = waitFor initWebsocket(mdFeed, loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
+            wsInitialized = true
+            info "Market data websocket connected; subscribing to data"
+            waitFor ws.subscribeData(mdSymbols)
+            info "Subscribed to data"
 
-      info "Starting redis ..."
-      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
-      redisInitialized = true
-      info "Redis connected"
+            info "Running main loop ..."
+            while true:
+              # If we're on to the next day, reload the program to get the new config
+              if getNowUtc().toDateTime().getDateStr() != today:
+                break
 
-      info "Starting market data websocket ..."
-      ws = waitFor initWebsocket(mdFeed, loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
-      wsInitialized = true
-      info "Market data websocket connected"
+              let replyBlock = waitFor ws.receiveMdWsReply()
 
-      info "Connected; subscribing to data"
+              for idx, reply in enumerate(replyBlock.parsedMd):
+                let symbol = block:
+                  let symbol = reply.getSymbol()
+                  if symbol.isNone:
+                    continue
+                  symbol.get
+                
+                let streamName = makeMdStreamName(today, symbol)
+                let writeResult = redis.cmd(@[
+                  "XADD", streamName, "*",
+                  "md_raw_data", $(replyBlock.rawMd[idx]),
+                  "md_receive_timestamp", $replyBlock.receiveTs,
+                ])
 
-      waitFor ws.subscribeData(mdSymbols)
+                if not writeResult.isOk:
+                  error "Write not ok", msg=writeResult.error.msg
+                else:
+                  inc numProcessed
 
-      info "Running main loop ..."
-      while true:
-        # If we're on to the next day, reload the program to get the new config
-        if getNowUtc().toDateTime().getDateStr() != today:
-          break
-
-        let replyBlock = waitFor ws.receiveMdWsReply()
-
-        for idx, reply in enumerate(replyBlock.parsedMd):
-          let symbol = block:
-            let symbol = reply.getSymbol()
-            if symbol.isNone:
-              continue
-            symbol.get
-          
-          let streamName = makeMdStreamName(today, symbol)
-          let writeResult = redis.cmd(@[
-            "XADD", streamName, "*",
-            # "md_parsed_data", reply.toJson(),
-            "md_raw_data", $(replyBlock.rawMd[idx]),
-            "md_receive_timestamp", $replyBlock.receiveTs,
-          ])
-
-          if not writeResult.isOk:
-            error "Write not ok", msg=writeResult.error.msg
-          else:
-            inc numProcessed
-
-          if numProcessed mod kEventsProcessedHeartbeat == 0:
-            info "Total events processed", numProcessed
+                if numProcessed mod kEventsProcessedHeartbeat == 0:
+                  info "Total events processed", numProcessed
 
     # Log any uncaught errors
     except OSError, ValueError, IOSelectorsException:
       error "Unhandled exception", msg=getCurrentExceptionMsg()
-    except DbError:
-      if not dbEverConnected:
-        warn "DbError", msg=getCurrentExceptionMsg()  
-      else:
-        error "DbError", msg=getCurrentExceptionMsg()
     except Exception:
       error "Unhandled generic exception", msg=getCurrentExceptionMsg()
 
@@ -127,24 +102,6 @@ proc main() {.raises: [].} =
           error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
         except:
           wsInitialized = false
-
-      # Close redis
-      if redisInitialized:
-        try:
-          redis.close()
-        except SslError, LibraryError:
-          error "Exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-        except Exception:
-          error "Generic exception occurred while closing redis!", msg=getCurrentExceptionMsg()
-        finally:
-          redisInitialized = false
-
-      # Close db
-      if dbInitialized:
-        try:
-          db.close()
-        finally:
-          dbInitialized = false
 
       sleep(1_000)
 
