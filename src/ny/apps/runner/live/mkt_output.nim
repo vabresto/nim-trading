@@ -77,12 +77,6 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
           if not orderCancelResp:
             error "Failed to send order cancellation command", cmd=resp
 
-    if not processedAny:
-      # Add a sleep so we don't max out the cores
-      # Obviously slows down trading but not practically an issue for this project
-      sleep(1)
-
-
 proc createMarketOutputThread*(symbols: seq[string]) =
   withRLock(marketConnectorLock):
     if not marketConnectorThreadCreated:
