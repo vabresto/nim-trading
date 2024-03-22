@@ -100,7 +100,7 @@ proc main() {.raises: [].} =
           ws.close()
         except Exception:
           error "Exception occurred while closing websocket!", msg=getCurrentExceptionMsg()
-        except:
+        finally:
           wsInitialized = false
 
       sleep(1_000)
