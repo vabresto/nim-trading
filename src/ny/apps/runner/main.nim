@@ -17,7 +17,6 @@ import ny/apps/runner/simulated/runner as sim_runner
 import ny/core/db/mddb
 import ny/core/env/envs
 import ny/core/types/strategy_base
-import ny/core/env/envs
 import ny/core/md/alpaca/types
 import ny/core/md/utils
 import ny/core/types/timestamp
@@ -29,6 +28,10 @@ import ny/core/streams/md_streams
 import ny/core/md/alpaca/conversions
 import ny/apps/runner/live/mkt_output
 import ny/core/md/alpaca/ou_types
+
+import ny/core/services/cli_args
+import ny/core/services/postgres
+import ny/core/services/redis
 
 logScope:
   topics = "sys runner"
@@ -85,164 +88,120 @@ proc symbol(resp: MergedStreamResponse): Option[string] =
 proc main() =
   let cliArgs = parseCliArgs()
 
-  var redisInitialized = false
-  var dbInitialized = false
-
-  var dbEverConnected = false
-
-  var redis: RedisClient
-  var db: DbConn
-
   var numProcessed = 0
-
-  let (date, dateStr) = if cliArgs.date.isSome:
-    let date = cliArgs.date.get
-    let dateStr = date.format("yyyy-MM-dd")
-    setIsSimulation(true)
-    info "Running for historical date", date=dateStr
-    (date, dateStr)
-  else:
-    let date = getNowUtc().toDateTime()
-    let dateStr = date.format("yyyy-MM-dd")
-    info "Running for live date", date=dateStr
-    (date, dateStr)
-
-  let mdSymbols = if cliArgs.symbols.len > 0:
-    let symbols = cliArgs.symbols
-    info "Running for manual override symbols", symbols
-    symbols
-  else:
-    info "Starting market data db ..."
-    db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-    dbInitialized = true
-    info "Market data db connected"
-    dbEverConnected = true
-
-    let mdFeed = db.getConfiguredMdFeed(dateStr)
-    let mdSymbols = db.getConfiguredMdSymbols(dateStr, mdFeed)
-    if mdSymbols.len == 0:
-      error "No market data symbols requested; terminating", feed=mdFeed, symbols=mdSymbols
-      quit 204
-    info "Running for db configured symbols", symbols=mdSymbols
-    mdSymbols
-
-  info "Running ..."
   
   try:
-    if isSimuluation():
-      info "Starting SIMULATED runner ..."
-      let symbol = if cliArgs.symbols.len > 0:
-        cliArgs.symbols[0]
-      else:
-        "FAKEPACA"
-      var sim = initSimulator(date, symbol)
-      sim.simulate()
-      info "Simulated runner done"
-    else:
-      info "Starting LIVE runner ..."
-
-      info "Starting redis ..."
-      redis = newRedisClient(loadOrQuit("MD_REDIS_HOST"), pass=some loadOrQuit("MD_REDIS_PASS"))
-      redisInitialized = true
-      info "Redis connected"
-
-      var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
-      for idx, symbol in enumerate(mdSymbols):
-        createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
-      createTimerThread()
-      createMarketOutputThread(mdSymbols)
-
-      var lastIds = initTable[string, string]()
-      var streamEventsProcessed = initTable[string, int64]()
-      var streamEventsExpected = initTable[string, int64]()
-      for symbol in mdSymbols:
-        for streamName in [makeMdStreamName(dateStr, symbol), makeOuStreamName(dateStr, symbol)]:
-          lastIds[streamName] = getInitialStreamId()
-          streamEventsProcessed[streamName] = 0
-
-          if isSimuluation():
-            let res = redis.cmd(@["XLEN", streamName])
-            if res.isOk:
-              streamEventsExpected[streamName] = res[].num
-          else:
-            streamEventsExpected[streamName] = int64.high
-
-      while true:
-        # We key by date; more efficient would be to only update this overnight, but whatever
-        # This means we can just leave it running for multiple days in a row
-        if cliArgs.date.isNone and getNowUtc().toDateTime().getDateStr() != dateStr:
-          break
-
+    withDb(db):
+      withCliArgs(cliArgs, db, today, mdSymbols, mdFeed):
         if isSimuluation():
-          var keepRunning = false
-          for symbol in mdSymbols:
-            let streamName = makeMdStreamName(dateStr, symbol)
-            if streamEventsProcessed[streamName] < streamEventsExpected[streamName]:
-              keepRunning = true
-              break
-          if not keepRunning:
-            info "Done running sim, processed all events", streamEventsExpected, streamEventsProcessed
-            quit 0
-
-        redis.send(makeReadStreamsCommand(lastIds, simulation=isSimuluation()))
-
-        let replyRaw = redis.receive()
-        if replyRaw.isOk:
-          if replyRaw[].kind == Error:
-            error "Got error reply from stream", err=replyRaw[].err
-            continue
-
-          let replyParseAttempt = replyRaw[].parseMergedStreamResponse
-          if replyParseAttempt.isOk:
-            let reply = replyParseAttempt[]
-            lastIds[reply.stream] = reply.id
-            inc streamEventsProcessed[reply.stream]
-
-            # Do the actual processing
-            let symbol = if reply.symbol.isSome:
-              reply.symbol.get
-            else:
-              error "Merged stream got symbol-less message", reply
-              continue
-
-            # Note: future optimization: can store these lookups somewhere
-            # currently this function takes a look but that's not necessary
-            let (ic, _) = getChannelsForSymbol(symbol)
-
-            let inputEvent = case reply.kind
-            of MarketData:
-              let internalMd = reply.md.mdReply.parseMarketDataUpdate
-              if internalMd.isErr:
-                # Note: May want to log the error here, but we're likely to get a lot of messages that
-                # we can't convert just because the mapping isn't done and they're not relevant
-                # Bad practice to silently "fail" though
-                continue
-
-              InputEvent(
-                kind: MarketData,
-                md: internalMd[],
-              )
-            of OrderUpdate:
-              let internalOu = reply.ou.ouReply.parseSysOrderUpdateEvent
-              if internalOu.isErr:
-                # Note: May want to log the error here, but we're likely to get a lot of messages that
-                # we can't convert just because the mapping isn't done and they're not relevant
-                # Bad practice to silently "fail" though
-                continue
-
-              InputEvent(
-                kind: OrderUpdate,
-                ou: internalOu[],
-              )
-
-            trace "Sending input event", inputEvent
-            ic.send(inputEvent)
-            
-            inc numProcessed
-            if numProcessed mod kEventsProcessedHeartbeat == 0:
-              info "Total events processed", numProcessed
+          info "Starting SIMULATED runner ..."
+          let symbol = if cliArgs.symbols.len > 0:
+            cliArgs.symbols[0]
+          else:
+            "FAKEPACA"
+          var sim = initSimulator(today.parse("yyyy-MM-dd"), symbol)
+          sim.simulate()
+          info "Simulated runner done"
         else:
-          warn "Error receiving", err=replyRaw.error.msg
+          info "Starting LIVE runner ..."
+          withRedis(redis):
+            var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
+            for idx, symbol in enumerate(mdSymbols):
+              createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
+            createTimerThread()
+            createMarketOutputThread(mdSymbols)
+
+            var lastIds = initTable[string, string]()
+            var streamEventsProcessed = initTable[string, int64]()
+            var streamEventsExpected = initTable[string, int64]()
+            for symbol in mdSymbols:
+              for streamName in [makeMdStreamName(today, symbol), makeOuStreamName(today, symbol)]:
+                lastIds[streamName] = getInitialStreamId()
+                streamEventsProcessed[streamName] = 0
+
+                if isSimuluation():
+                  let res = redis.cmd(@["XLEN", streamName])
+                  if res.isOk:
+                    streamEventsExpected[streamName] = res[].num
+                else:
+                  streamEventsExpected[streamName] = int64.high
+
+            while true:
+              # We key by date; more efficient would be to only update this overnight, but whatever
+              # This means we can just leave it running for multiple days in a row
+              if cliArgs.date.isNone and getNowUtc().toDateTime().getDateStr() != today:
+                break
+
+              if isSimuluation():
+                var keepRunning = false
+                for symbol in mdSymbols:
+                  let streamName = makeMdStreamName(today, symbol)
+                  if streamEventsProcessed[streamName] < streamEventsExpected[streamName]:
+                    keepRunning = true
+                    break
+                if not keepRunning:
+                  info "Done running sim, processed all events", streamEventsExpected, streamEventsProcessed
+                  quit 0
+
+              redis.send(makeReadStreamsCommand(lastIds, simulation=isSimuluation()))
+
+              let replyRaw = redis.receive()
+              if replyRaw.isOk:
+                if replyRaw[].kind == Error:
+                  error "Got error reply from stream", err=replyRaw[].err
+                  continue
+
+                let replyParseAttempt = replyRaw[].parseMergedStreamResponse
+                if replyParseAttempt.isOk:
+                  let reply = replyParseAttempt[]
+                  lastIds[reply.stream] = reply.id
+                  inc streamEventsProcessed[reply.stream]
+
+                  # Do the actual processing
+                  let symbol = if reply.symbol.isSome:
+                    reply.symbol.get
+                  else:
+                    error "Merged stream got symbol-less message", reply
+                    continue
+
+                  # Note: future optimization: can store these lookups somewhere
+                  # currently this function takes a look but that's not necessary
+                  let (ic, _) = getChannelsForSymbol(symbol)
+
+                  let inputEvent = case reply.kind
+                  of MarketData:
+                    let internalMd = reply.md.mdReply.parseMarketDataUpdate
+                    if internalMd.isErr:
+                      # Note: May want to log the error here, but we're likely to get a lot of messages that
+                      # we can't convert just because the mapping isn't done and they're not relevant
+                      # Bad practice to silently "fail" though
+                      continue
+
+                    InputEvent(
+                      kind: MarketData,
+                      md: internalMd[],
+                    )
+                  of OrderUpdate:
+                    let internalOu = reply.ou.ouReply.parseSysOrderUpdateEvent
+                    if internalOu.isErr:
+                      # Note: May want to log the error here, but we're likely to get a lot of messages that
+                      # we can't convert just because the mapping isn't done and they're not relevant
+                      # Bad practice to silently "fail" though
+                      continue
+
+                    InputEvent(
+                      kind: OrderUpdate,
+                      ou: internalOu[],
+                    )
+
+                  trace "Sending input event", inputEvent
+                  ic.send(inputEvent)
+                  
+                  inc numProcessed
+                  if numProcessed mod kEventsProcessedHeartbeat == 0:
+                    info "Total events processed", numProcessed
+              else:
+                warn "Error receiving", err=replyRaw.error.msg
 
   except DbError:
     error "Failed to connect to db to start simulation", msg=getCurrentExceptionMsg()
