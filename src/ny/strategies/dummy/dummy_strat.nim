@@ -119,12 +119,6 @@ func goToState(self: var DummyStrategyState, state: StateKind): seq[OutputEvent]
   of EodClose:
     {.noSideEffect.}:
       info "Got EOD close message from timer", curState=self.state, position=self.position, posVwap=self.positionVwap, posMktValue=self.calcPositionMktPrice(), stratPnl=self.stratPnl, fees=self.calculateTotalFees
-
-    # result &= self.closeAllOpenOrders()
-
-    # # If we had any fills, go to exit, otherwise, back to wait for momentum
-    # if self.position > 0 and self.pendingOrders.len == 0 and self.numOpenOrders == 0:
-    #   result &= self.marketExitPosition()
     self.state = EodClose
   of EodDone:
     discard
@@ -184,10 +178,6 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
 
 
   of MarketData:
-    # if update.kind == MarketData and update.md.kind == BarMinute:
-    #   {.noSideEffect.}:
-    #     info "Strategy got bar", update, state=state.state, curPrice=state.calcPositionMktPrice()
-
     case state.state
     of WaitingForMomentum:
       if update.kind == MarketData and update.md.kind == BarMinute:
@@ -200,18 +190,6 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
           result &= state.goToState(WaitingForFill)
           result &= state.tryEnterPosition(newBar.highPrice - Price(dollars: 0, cents: kCentsEnterDiscount))
           return
-
-    # of ExitingPositionOptimistic, ExitingPositionPessimistic:
-    #   if state.position <= 0:
-    #     result &= state.goToState(WaitingForMomentum)
-
-    #   # Have some position
-    #   result &= state.tryExitPosition(state.getIdealExitPrice)
-    #   return
-
-    # of EodClose:
-    #   result &= state.tryExitPosition(state.getIdealExitPrice)
-    #   return
 
     of ExitingPositionOptimistic, ExitingPositionPessimistic, EodClose, WaitingForFill, EodDone:
       discard
