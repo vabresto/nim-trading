@@ -1,5 +1,6 @@
 ## This module sends out market requests received from the models to the alpaca rest api
-import os
+import std/os
+import std/rlocks
 
 import chronicles
 import questionable/results as qr
@@ -19,7 +20,10 @@ logScope:
   topics = "sys sys:live live-output"
 
 var marketConnectorThread: Thread[seq[string]]
-var marketConnectorThreadCreated = false
+var marketConnectorLock: RLock
+var marketConnectorThreadCreated {.guard: marketConnectorLock.} = false
+
+marketConnectorLock.initRLock()
 
 proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
   # Init, and store mapping of chan + symbol
@@ -80,7 +84,9 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
 
 
 proc createMarketOutputThread*(symbols: seq[string]) =
-  if not marketConnectorThreadCreated:
-    info "Creating market output thread ...", symbols
-    createThread(marketConnectorThread, marketOutputThreadEx, symbols)
-    marketConnectorThreadCreated = true
+  withRLock(marketConnectorLock):
+    if not marketConnectorThreadCreated:
+      marketConnectorThreadCreated = true
+      info "Creating market output thread ...", symbols
+      createThread(marketConnectorThread, marketOutputThreadEx, symbols)
+      

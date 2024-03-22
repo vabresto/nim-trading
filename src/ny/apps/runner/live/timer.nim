@@ -3,6 +3,7 @@
 ## but we don't want to/can't wait for the actual requested time.
 
 import std/heapqueue
+import std/rlocks
 
 import chronicles
 import threading/channels
@@ -23,7 +24,8 @@ type
 func `<`(a, b: QueuedTimerEvent): bool = a.event < b.event
 
 var timerThread: Thread[void]
-var timerThreadCreated = false
+var timerThreadLock: RLock
+var timerThreadCreated {.guard: timerThreadLock.} = false
 
 
 proc timerThreadEx() {.thread, raises: [].} =
@@ -50,7 +52,8 @@ proc timerThreadEx() {.thread, raises: [].} =
 
 
 proc createTimerThread*() =
-  if not timerThreadCreated:
-    info "Creating timer thread ..."
-    createThread(timerThread, timerThreadEx)
-    timerThreadCreated = true
+  withRLock(timerThreadLock):
+    if not timerThreadCreated:
+      info "Creating timer thread ..."
+      createThread(timerThread, timerThreadEx)
+      timerThreadCreated = true

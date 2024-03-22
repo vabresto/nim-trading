@@ -27,8 +27,7 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         error "Failed to initialize runner; quitting", args
         return
 
-    {.noSideEffect.}:
-      let dateStr = getNowUtc().getDateStr()
+    let dateStr = getNowUtc().getDateStr()
     var state = initDummyStrategy(dateStr & ":" & args.symbol & ":")
 
     while true:
