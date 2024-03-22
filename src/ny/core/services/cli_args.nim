@@ -29,11 +29,11 @@ template withCliArgs*(cliArgs: ParsedCliArgs, db: DbConn, today: untyped, mdSymb
   today = if cliArgs.date.isSome:
     let date = cliArgs.date.get.format("yyyy-MM-dd")
     setIsSimulation(true)
-    info "Running for historical date", date
+    info "Running for historical date", date=date
     date
   else:
     let date = getNowUtc().toDateTime().getDateStr()
-    info "Running for live date", date
+    info "Running for live date", date=date
     date
 
   logScope:
@@ -43,7 +43,7 @@ template withCliArgs*(cliArgs: ParsedCliArgs, db: DbConn, today: untyped, mdSymb
   var mdFeed: string
   (mdSymbols, mdFeed) = if cliArgs.symbols.len > 0:
     let symbols = cliArgs.symbols
-    info "Running for manual override symbols", symbols
+    info "Running for manual override symbols", symbols=symbols
     (symbols, "manual")
   else:
     let mdFeed = db.getConfiguredMdFeed(today)

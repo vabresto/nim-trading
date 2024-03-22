@@ -43,7 +43,7 @@ template processStreams*(cliArgs: ParsedCliArgs, db: DbConn, redis: RedisClient,
       else:
         streamEventsExpected[streamName] = int64.high
 
-    info "Running main loop ...", streamEventsExpected
+    info "Running main loop ...", streamEventsExpected=streamEventsExpected
     while true:
       # We key by date; more efficient would be to only update this overnight, but whatever
       # This means we can just leave it running for multiple days in a row
@@ -58,7 +58,7 @@ template processStreams*(cliArgs: ParsedCliArgs, db: DbConn, redis: RedisClient,
             keepRunning = true
             break
         if not keepRunning:
-          info "Done running md sim, processed all events", streamEventsExpected, streamEventsProcessed
+          info "Done running md sim, processed all events", streamEventsExpected=streamEventsExpected, streamEventsProcessed=streamEventsProcessed
           quit 0
 
       redis.send(makeReadStreamsCommand(lastIds, simulation=isSimuluation()))
