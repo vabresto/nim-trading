@@ -1,7 +1,7 @@
 import chronicles
 import threading/channels
-import std/isolation
 
+import ny/apps/runner/live/chan_types
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/strategies/dummy/dummy_strat
@@ -43,6 +43,6 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         try:
           trace "Strategy replied", msg, resp
           strategy.handleOutputEvent(resp)
-          oc.send(isolate(resp))
+          oc.send(OutputEventMsg(symbol: args.symbol, event: resp))
         except Exception:
           error "Failed to send request!", resp

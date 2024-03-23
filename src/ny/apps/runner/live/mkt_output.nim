@@ -6,6 +6,7 @@ import questionable/results as qr
 import results
 import threading/channels
 
+import ny/apps/runner/live/chan_types
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/core/types/tif
@@ -25,17 +26,8 @@ var marketConnectorThreadCreated {.guard: marketConnectorLock.} = false
 marketConnectorLock.initRLock()
 
 proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
-  # Init, and store mapping of chan + symbol
-  var chans = newSeq[tuple[symbol: string, chan: Chan[OutputEvent]]]()
-  for symbol in symbols:
-    try:
-      let (_, oc) = getChannelsForSymbol(symbol)
-      chans.add (symbol, oc)
-    except KeyError:
-      error "Failed to get channels for symbol; terminating", symbol
-      quit 200
-
   var timerChan = getTimerChannel()
+  var outChan = getTheOutputChannel()
 
   info "Creating alpaca http client ..."
   let client = initAlpacaClient(
@@ -51,30 +43,27 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
 
   info "Starting output loop ..."
   while true:
-    var processedAny = false
-    for (symbol, oc) in chans:
-      var resp: OutputEvent
-      if oc.tryRecv(resp):
-        processedAny = true
-        info "Got output event", outputEvent=resp
-        case resp.kind
-        of Timer:
-          timerChan.send(TimerChanMsg(symbol: symbol, kind: CreateTimer, create: RequestTimer(timer: resp.timer)))
-        of OrderSend:
-          let orderSentResp = case resp.orderKind:
-            of Limit:
-              client[].sendOrder(makeLimitOrder(symbol, resp.side.toAlpacaSide, resp.tif.toAlpacaTif, resp.quantity, resp.price, resp.clientOrderId.string))
-            of Market:
-              if resp.tif == TifKind.Day:
-                client[].sendOrder(makeMarketOrder(symbol, resp.side.toAlpacaSide, resp.quantity, resp.clientOrderId.string))
-              else:
-                client[].sendOrder(makeMarketOnCloseOrder(symbol, resp.side.toAlpacaSide, resp.quantity, resp.clientOrderId.string))
-          if orderSentResp.isErr:
-            error "Failed to send order creation command", cmd=resp, err=orderSentResp.error.msg
-        of OrderCancel:
-          let orderCancelResp = client[].cancelOrder(resp.idToCancel.string)
-          if not orderCancelResp:
-            error "Failed to send order cancellation command", cmd=resp
+    var resp: OutputEventMsg
+    outChan.recv(resp)
+    info "Got output event", outputEvent=resp
+    case resp.event.kind
+    of Timer:
+      timerChan.send(TimerChanMsg(symbol: resp.symbol, kind: CreateTimer, create: RequestTimer(timer: resp.event.timer)))
+    of OrderSend:
+      let orderSentResp = case resp.event.orderKind:
+        of Limit:
+          client[].sendOrder(makeLimitOrder(resp.symbol, resp.event.side.toAlpacaSide, resp.event.tif.toAlpacaTif, resp.event.quantity, resp.event.price, resp.event.clientOrderId.string))
+        of Market:
+          if resp.event.tif == TifKind.Day:
+            client[].sendOrder(makeMarketOrder(resp.symbol, resp.event.side.toAlpacaSide, resp.event.quantity, resp.event.clientOrderId.string))
+          else:
+            client[].sendOrder(makeMarketOnCloseOrder(resp.symbol, resp.event.side.toAlpacaSide, resp.event.quantity, resp.event.clientOrderId.string))
+      if orderSentResp.isErr:
+        error "Failed to send order creation command", cmd=resp, err=orderSentResp.error.msg
+    of OrderCancel:
+      let orderCancelResp = client[].cancelOrder(resp.event.idToCancel.string)
+      if not orderCancelResp:
+        error "Failed to send order cancellation command", cmd=resp
 
 proc createMarketOutputThread*(symbols: seq[string]) =
   withRLock(marketConnectorLock):
