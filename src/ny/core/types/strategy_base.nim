@@ -40,6 +40,7 @@ type
     Timer
     MarketData
     OrderUpdate
+    CommandFailed
 
   OutputEventKind* = enum
     Timer
@@ -74,6 +75,19 @@ type
     of Cancelled, CancelPending:
       discard
 
+  FailedCommandKind* = enum
+    OrderSendFailed
+    OrderCancelFailed
+
+  FailedCommand* = object
+    timestamp*: Timestamp
+    # TODO: Would be good to return the fail reason given from alpaca so we can handle each differently
+    case kind*: FailedCommandKind
+    of OrderSendFailed:
+      clientOrderId*: ClientOrderId
+    of OrderCancelFailed:
+      idToCancel*: OrderId # exchange id
+
   InputEvent* = object
     case kind*: InputEventKind
     of Timer:
@@ -82,6 +96,8 @@ type
       md*: MarketDataUpdate
     of OrderUpdate:
       ou*: SysOrderUpdateEvent
+    of CommandFailed:
+      cmd*: FailedCommand
 
   OutputEvent* = object
     case kind*: OutputEventKind
@@ -107,6 +123,8 @@ func timestamp*(rsp: InputEvent): Timestamp =
     rsp.md.timestamp
   of OrderUpdate:
     rsp.ou.timestamp
+  of CommandFailed:
+    rsp.cmd.timestamp
 
 
 func `<`*(a, b: TimerEvent): bool = a.timestamp < b.timestamp
@@ -192,12 +210,20 @@ func markOrderDone(state: var StrategyBase, update: InputEvent) =
 
 
 func pruneDoneOrders*(state: var StrategyBase) =
-  var ordersToPrune = newSeq[ClientOrderId]()
+  var pendingOrdersToPrune = newSeq[ClientOrderId]()
+  for (id, order) in state.pendingOrders.mpairs:
+    if order.done:
+      pendingOrdersToPrune.add id
+
+  for id in pendingOrdersToPrune:
+    state.pendingOrders.del id
+
+  var openOrdersToPrune = newSeq[OrderId]()
   for (id, order) in state.openOrders.mpairs:
     if order.done:
-      ordersToPrune.add id
+      openOrdersToPrune.add id
 
-  for id in ordersToPrune:
+  for id in openOrdersToPrune:
     state.openOrders.del id
 
 
@@ -292,6 +318,18 @@ proc handleInputEvent*(state: var StrategyBase, update: InputEvent) =
 
     of CancelPending:
       error "Got unhandled order event!", event=update
+  
+  of CommandFailed:
+    case update.cmd.kind
+    of OrderSendFailed:
+      try:
+        state.pendingOrders[update.cmd.clientOrderId].done = true
+      except KeyError:
+        error "Failed to mark pending order as done when send failed", clientOrderId=update.cmd.clientOrderId
+
+    of OrderCancelFailed:
+      # Nothing to do at this point, the order is still open since we failed to cancel it
+      discard
 
 
 proc handleOutputEvent*(state: var StrategyBase, update: OutputEvent) = 

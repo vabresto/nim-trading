@@ -10,6 +10,7 @@ import ny/apps/runner/live/chan_types
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/core/types/tif
+import ny/core/types/timestamp
 import ny/core/env/envs
 import ny/core/trading/client as trading_client
 import ny/core/trading/types
@@ -59,10 +60,24 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
             client[].sendOrder(makeMarketOnCloseOrder(resp.symbol, resp.event.side.toAlpacaSide, resp.event.quantity, resp.event.clientOrderId.string))
       if orderSentResp.isErr:
         error "Failed to send order creation command", cmd=resp, err=orderSentResp.error.msg
+        try:
+          let ic = getChannelForSymbol(resp.symbol)
+          ic.send(InputEvent(kind: CommandFailed, cmd: FailedCommand(timestamp: getNowUtc(), kind: OrderSendFailed, clientOrderId: resp.event.clientOrderId)))
+        except KeyError:
+          error "Failed to get channel for symbol", symbol=resp.symbol
+        except Exception:
+          error "Failed to send OrderSendFailed message", clientOrderId=resp.event.clientOrderId.string
     of OrderCancel:
       let orderCancelResp = client[].cancelOrder(resp.event.idToCancel.string)
       if not orderCancelResp:
         error "Failed to send order cancellation command", cmd=resp
+        try:
+          let ic = getChannelForSymbol(resp.symbol)
+          ic.send(InputEvent(kind: CommandFailed, cmd: FailedCommand(timestamp: getNowUtc(), kind: OrderCancelFailed, idToCancel: resp.event.idToCancel)))
+        except KeyError:
+          error "Failed to get channel for symbol", symbol=resp.symbol
+        except Exception:
+          error "Failed to send OrderCancelFailed message", idToCancel=resp.event.idToCancel.string
 
 proc createMarketOutputThread*(symbols: seq[string]) =
   withRLock(marketConnectorLock):

@@ -11,6 +11,7 @@ import std/tables
 import std/times
 
 import chronicles
+# import fusion/matching
 
 import ny/core/md/md_types
 import ny/core/types/md/bar_details
@@ -136,12 +137,20 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         # Note: can't send MOC orders after 3:55 apparently
         timestamp: (state.curTime.toDateTime.format("yyyy-MM-dd") & "T19:54:45.000000000Z").parseTimestamp,
         name: "[EOD-CLOSE] Closing out position to end the day flat")),
+
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=15), name: "Sending 15 sec timer")),
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=5), name: "Sending 5 sec timer")),
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=10), name: "Sending 10 sec timer")),
+      
     ]
+
+  # Consider using fusion pattern matching, and split on (State, EventKind)
+  # Need to figure out why we sometimes have two orders out/fill for 200 shares
 
   case update.kind
   of Timer:
     {.noSideEffect.}:
-      debug "Got timer", timer=update.timer
+      info "Got timer", timer=update.timer
 
     if "[EOD-CLOSE]" in update.timer.name:
       result &= state.goToState(EodClose)
@@ -204,3 +213,8 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         return
     else:
       discard
+
+
+  of CommandFailed:
+    {.noSideEffect.}:
+      error "Command failed", cmd=update.cmd

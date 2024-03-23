@@ -159,12 +159,18 @@ proc simulate*(sim: var Simulator) =
             sim.scheduledOrderUpdates.push resp.ou
           of MarketData:
             error "Got market data event from matchingEngine.onMarketDataEvent ?!", event=resp
+          of CommandFailed:
+            error "Requested command failed from matchingEngine.onMarketDataEvent", event=resp
       else:
         debug "Got filtered market data event", msg
         discard
     of Timer:
       matchingEngine.curTime = msg.timer.timestamp
     of OrderUpdate:
+      warn "No action taken for order update"
+      discard
+    of CommandFailed:
+      warn "No action taken for command failed"
       discard
 
     strategy.handleInputEvent(msg)
@@ -181,3 +187,5 @@ proc simulate*(sim: var Simulator) =
           sim.scheduledOrderUpdates.push resp.ou
         of MarketData:
           error "Got market data event from matchingEngine.onRequest ?!", event=resp
+        of CommandFailed:
+          error "Requested command failed from matchingEngine.onRequest", event=resp
