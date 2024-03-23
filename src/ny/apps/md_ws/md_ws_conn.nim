@@ -109,7 +109,17 @@ proc receiveMdWsReply(ws: WebSocket): Future[MdWsReply] {.async.} =
   return MdWsReply(receiveTs: receiveTimestamp, parsedMd: parsed, rawMd: rawMd)
 
 
-proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
+proc subscribeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
+  let subscribeMessage = $ %*{
+    "action": "subscribe",
+    "trades": symbols,
+    "quotes": symbols,
+    "bars": symbols,
+  }
+  await ws.send(subscribeMessage)
+
+
+proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string, mdSymbols: seq[string]): Future[WebSocket] {.async.} =
   # First, create the socket
   var socket: WebSocket = await newWebSocket("wss://stream.data.alpaca.markets/v2/" & feed)
   socket.setupPings(15)
@@ -137,7 +147,7 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
   }
   await socket.send(authMsg)
 
-  # Wait for confirmation
+  # Wait for auth confirmation
   while true:
     let reply = await socket.receiveMdWsReply()
     if reply.parsedMd.len > 0:
@@ -152,15 +162,60 @@ proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string): Futu
         authException.code = reply.parsedMd[0].error.code
         raise authException
 
+  info "Market data websocket connected; subscribing to data"
+  waitFor socket.subscribeData(mdSymbols)
+
+  # Wait for subscription confirmation
+  while true:
+    let reply = await socket.receiveMdWsReply()
+    if reply.parsedMd.len > 0:
+      if reply.parsedMd[0].kind == AlpacaMdWsReplyKind.Subscription:
+        let sub = reply.parsedMd[0].subscription
+
+        var gotAllRequestedTradeSymbols = true
+        for reqSymbol in mdSymbols:
+          var gotReqSymbol = false
+          for gotSymbol in sub.trades:
+            if reqSymbol == gotSymbol:
+              gotReqSymbol = true
+              break
+          if not gotReqSymbol:
+            gotAllRequestedTradeSymbols = false
+            break
+
+        var gotAllRequestedQuoteSymbols = true
+        for reqSymbol in mdSymbols:
+          var gotReqSymbol = false
+          for gotSymbol in sub.trades:
+            if reqSymbol == gotSymbol:
+              gotReqSymbol = true
+              break
+          if not gotReqSymbol:
+            gotAllRequestedQuoteSymbols = false
+            break
+
+        var gotAllRequestedBarSymbols = true
+        for reqSymbol in mdSymbols:
+          var gotReqSymbol = false
+          for gotSymbol in sub.trades:
+            if reqSymbol == gotSymbol:
+              gotReqSymbol = true
+              break
+          if not gotReqSymbol:
+            gotAllRequestedBarSymbols = false
+            break
+
+        if gotAllRequestedTradeSymbols and gotAllRequestedQuoteSymbols and gotAllRequestedBarSymbols:
+          # Got what we wanted
+          break
+        else:
+          error "Got subscription reply, but didn't get everything requested", mdSymbols, reply
+      elif reply.parsedMd[0].kind == AlpacaMdWsReplyKind.AuthErr:
+        var authException = newException(AlpacaAuthError, reply.parsedMd[0].error.msg)
+        authException.code = reply.parsedMd[0].error.code
+        raise authException
+
+  info "Subscribed to all requested data"
+
   # All set up, return the socket we created
   socket
-
-
-proc subscribeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
-  let subscribeMessage = $ %*{
-    "action": "subscribe",
-    "trades": symbols,
-    "quotes": symbols,
-    "bars": symbols,
-  }
-  await ws.send(subscribeMessage)

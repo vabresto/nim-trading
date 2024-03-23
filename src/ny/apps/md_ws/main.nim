@@ -49,11 +49,8 @@ proc main() {.raises: [].} =
           withCliArgs(cliArgs, db, today, mdSymbols, mdFeed):
 
             info "Starting market data websocket ..."
-            ws = waitFor initWebsocket(mdFeed, loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"))
+            ws = waitFor initWebsocket(mdFeed, loadOrQuit("ALPACA_API_KEY"), loadOrQuit("ALPACA_API_SECRET"), mdSymbols)
             wsInitialized = true
-            info "Market data websocket connected; subscribing to data"
-            waitFor ws.subscribeData(mdSymbols)
-            info "Subscribed to data"
 
             info "Running main loop ..."
             while true:
@@ -79,6 +76,10 @@ proc main() {.raises: [].} =
                   info "Total events processed", numProcessed
 
     # Log any uncaught errors
+    except WebSocketClosedError:
+      error "Websocket closed exception", msg=getCurrentExceptionMsg()
+    except WebSocketError:
+      error "Websocket generic exception", msg=getCurrentExceptionMsg()
     except OSError, ValueError, IOSelectorsException:
       error "Unhandled exception", msg=getCurrentExceptionMsg()
     except Exception:
