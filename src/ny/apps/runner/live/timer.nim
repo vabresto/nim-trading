@@ -87,7 +87,7 @@ proc waitForNextEvent(sched: var TimerEventScheduler): QueuedTimerEvent =
 
       let timespec = Timespec(tv_sec: cast[posix.Time](target.epoch.clong), tv_nsec: target.nanos)
       let timeoutErr = pthread_cond_timedwait(sched.cv.addr, sched.mutex.addr, timespec.addr)
-      if timeoutErr == 60:
+      if timeoutErr == ETIMEDOUT:
         # Timeout errors in this context mean that we hit our target time
         discard
       elif timeoutErr != 0:
