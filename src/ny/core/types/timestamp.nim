@@ -30,14 +30,17 @@ proc getDateStr*(ts: Timestamp): string {.noSideEffect.} =
     ts.toDateTime.getDateStr()
 
 func `+`*(ts: Timestamp, dur: Duration): Timestamp {.noSideEffect.} =
-  var time =ts.toTime
+  var time = ts.toTime
   time += dur
   fromTime(time)
 
 func `-`*(ts: Timestamp, dur: Duration): Timestamp {.noSideEffect.} =
-  var time =ts.toTime
+  var time = ts.toTime
   time -= dur
   fromTime(time)
+
+func `-`*(a: Timestamp, b: Timestamp): Duration {.noSideEffect.} =
+  a.toTime - b.toTime
 
 func `$`*(ts: Timestamp): string =
   ts.toDateTime.format(tsStringFormat)
