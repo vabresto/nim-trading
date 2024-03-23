@@ -27,7 +27,9 @@ type
     mutex*: Pthread_mutex
     cv*: Pthread_cond
 
+
 func `<`(a, b: QueuedTimerEvent): bool = a.event < b.event
+
 
 var gTimerInsertionThread: Thread[ptr TimerEventScheduler]
 var gTimerWaitThread: Thread[ptr TimerEventScheduler]

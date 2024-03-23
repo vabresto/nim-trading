@@ -57,6 +57,6 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
 
       if resps.len > 0 and monSock.isSome:
         try:
-          initPushMessage(base = strategy, strategy = %*strategy).pushStrategyState(monSock.get)
+          initPushMessage(base = strategy, strategy = %*strategy, symbol = args.symbol).pushStrategyState(monSock.get)
         except OSError, SslError:
           error "Failed to push strategy state update message to monitoring socket"

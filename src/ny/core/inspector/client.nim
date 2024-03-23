@@ -16,10 +16,12 @@ import ny/core/types/timestamp
 import ny/core/utils/sim_utils
 import ny/core/inspector/shared
 
+
 type
   PushMessage* = object
     base: StrategyBase
     strategy: JsonNode
+    symbol: string
     isSim: bool
     timestamp: Timestamp
 
@@ -39,8 +41,8 @@ proc getMonitorSocket*(monitorAddress: Option[string], monitorPort: Option[Port]
     none[Socket]()
 
 
-proc initPushMessage*(base: StrategyBase, strategy: JsonNode): PushMessage =
-  PushMessage(base: base, strategy: strategy, isSim: isSimuluation(), timestamp: getNowUtc())
+proc initPushMessage*(base: StrategyBase, strategy: JsonNode, symbol: string): PushMessage =
+  PushMessage(base: base, strategy: strategy, symbol: symbol, isSim: isSimuluation(), timestamp: getNowUtc())
 
 
 proc pushStrategyState*(msg: PushMessage, socket: Socket) =

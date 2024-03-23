@@ -33,8 +33,10 @@ import ny/core/services/cli_args
 import ny/core/services/postgres
 import ny/core/services/redis
 
+
 logScope:
   topics = "sys runner"
+
 
 type
   MergedStreamKind = enum
@@ -50,7 +52,9 @@ type
     of OrderUpdate:
       ou: OuStreamResponse
 
+
 const kEventsProcessedHeartbeat = 5_000
+
 
 proc parseMergedStreamResponse(val: RedisValue): ?!MergedStreamResponse =
   # Need to parse both md and ou stream data
@@ -75,6 +79,7 @@ proc parseMergedStreamResponse(val: RedisValue): ?!MergedStreamResponse =
     error "Got unknown stream", streamName
     failure "Unknown stream type: " & streamName
 
+
 proc symbol(resp: MergedStreamResponse): Option[string] =
   case resp.kind
   of MarketData:
@@ -84,6 +89,7 @@ proc symbol(resp: MergedStreamResponse): Option[string] =
     resp.md.mdReply.getSymbol
   of OrderUpdate:
     some resp.ou.ouReply.symbol
+
 
 proc main() =
   let cliArgs = parseCliArgs()

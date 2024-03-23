@@ -27,6 +27,8 @@ type
   Simulator* = object
     db*: DbConn
 
+    symbol: string
+
     curTime: float
     timers: HeapQueue[TimerEvent]
     scheduledOrderUpdates: HeapQueue[SysOrderUpdateEvent]
@@ -40,6 +42,7 @@ type
 
 proc `<`(a, b: SysOrderUpdateEvent): bool = a.timestamp < b.timestamp
 
+
 proc createEmptyTimerIterator(): auto =
   (iterator(sim: var Simulator): Option[TimerEvent] {.closure, gcsafe.} =
     while true:
@@ -50,6 +53,7 @@ proc createEmptyTimerIterator(): auto =
       yield res
     error "End of timer iterator?"
   )
+
 
 proc createEmptyOrderUpdateIterator(): auto =
   (iterator(sim: var Simulator): Option[SysOrderUpdateEvent] {.closure, gcsafe.} =
@@ -62,11 +66,13 @@ proc createEmptyOrderUpdateIterator(): auto =
     error "End of order update iterator?"
   )
 
+
 proc initSimulator*(date: Datetime, symbol: string, monitorAddress: Option[string], monitorPort: Option[Port]): Simulator =
   let db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
 
   Simulator(
     db: db,
+    symbol: symbol,
     curTime: 0.float,
     timers: initHeapQueue[TimerEvent](),
     timerItr: createEmptyTimerIterator(),
@@ -79,14 +85,17 @@ proc initSimulator*(date: Datetime, symbol: string, monitorAddress: Option[strin
 proc getNextTimerEvent(sim: var Simulator): Option[TimerEvent] =
   sim.timerItr(sim)
 
+
 proc getNextMarketDataEvent(sim: Simulator): Option[MarketDataUpdate] =
   if not finished(sim.mdItr):
     sim.mdItr()
   else:
     none[MarketDataUpdate]()
 
+
 proc getNextOrderUpdateEvent(sim: var Simulator): Option[SysOrderUpdateEvent] =
   sim.ouItr(sim)
+
 
 proc addTimer*(sim: var Simulator, timer: TimerEvent) =
   sim.timers.push timer
@@ -201,4 +210,4 @@ proc simulate*(sim: var Simulator) =
           error "Requested command failed from matchingEngine.onRequest", event=resp
 
     if cmds.len > 0 and sim.monitorSocket.isSome:
-      initPushMessage(base = strategy, strategy = %*strategy).pushStrategyState(sim.monitorSocket.get)
+      initPushMessage(base = strategy, strategy = %*strategy, symbol = sim.symbol).pushStrategyState(sim.monitorSocket.get)

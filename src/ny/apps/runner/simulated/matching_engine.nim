@@ -28,6 +28,7 @@ import ny/core/types/timestamp
 logScope:
   topics = "sys sys:sim sim-matching-engine"
 
+
 type
   SimMatchingEngine* = object
     curTime*: Timestamp
@@ -36,16 +37,20 @@ type
     book*: OrdersBook
     orderCount*: int = 1
 
+
 proc initSimMatchingEngine*(): SimMatchingEngine =
   result.book = initOrdersBook()
+
 
 proc makeJitter(me: var SimMatchingEngine): Duration =
   var rng = initRand(me.curTime.epoch)
   initDuration(nanoseconds=rng.gauss(mu=5_000_000, sigma=400_000).int64) # mean 5ms, stddev 400micros
 
+
 proc makeDelay(me: var SimMatchingEngine): Duration =
   var rng = initRand(me.curTime.epoch)
   initDuration(nanoseconds=rng.gauss(mu=500_000_000, sigma=50_000_000).int64) # mean 500ms, stddev 50ms
+
 
 proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
   for price in me.book.sortedPrices(Buy):
@@ -112,6 +117,7 @@ proc tryFillOrders(me: var SimMatchingEngine): seq[InputEvent] =
           order.cumSharesFilled += fillAmt
           delay += me.makeDelay()
 
+
 proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[InputEvent] =
   if ev.timestamp < me.curTime:
     error "New event timestamp before current timestamp", cur=me.curTime, old=ev.timestamp
@@ -130,6 +136,7 @@ proc onMarketDataEvent*(me: var SimMatchingEngine, ev: MarketDataUpdate): seq[In
     discard
   of Status:
     me.status = ev.status
+
 
 proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
   case msg.kind

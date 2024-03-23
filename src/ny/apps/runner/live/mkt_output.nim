@@ -16,14 +16,18 @@ import ny/core/trading/client as trading_client
 import ny/core/trading/types
 import ny/core/trading/enums/tif
 
+
 logScope:
   topics = "sys sys:live live-output"
+
 
 var marketConnectorThread: Thread[seq[string]]
 var marketConnectorLock: RLock
 var marketConnectorThreadCreated {.guard: marketConnectorLock.} = false
 
+
 marketConnectorLock.initRLock()
+
 
 proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
   var timerChan = getTimerChannel()
@@ -78,6 +82,7 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
           error "Failed to get channel for symbol", symbol=resp.symbol
         except Exception:
           error "Failed to send OrderCancelFailed message", idToCancel=resp.event.idToCancel.string
+
 
 proc createMarketOutputThread*(symbols: seq[string]) =
   withRLock(marketConnectorLock):
