@@ -161,7 +161,7 @@ proc simulate*(sim: var Simulator) =
   
   info "Init state ..."
   var matchingEngine = initSimMatchingEngine()
-  var strategy = initDummyStrategy("sim:")
+  var strategy = initDummyStrategy("dummy", "sim:")
 
   info "Running sim ..."
   for msg in eventItr(sim):

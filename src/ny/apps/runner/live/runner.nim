@@ -37,11 +37,11 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         return
 
     let dateStr = getNowUtc().getDateStr()
-    var strategy = initDummyStrategy(dateStr & ":" & args.symbol & ":")
+    var strategy = initDummyStrategy("dummy", dateStr & ":" & args.symbol & ":")
 
     while true:
       let msg: InputEvent = ic.recv()
-  
+
       trace "Got message", msg
 
       strategy.handleInputEvent(msg)

@@ -16,6 +16,8 @@ import ny/core/utils/sim_utils
 
 type
   StrategyBase* = object of RootObj
+    strategyId: string
+
     curTime: Timestamp
     curEventNum: int = 0
     nbbo: Nbbo
@@ -129,20 +131,23 @@ func timestamp*(rsp: InputEvent): Timestamp =
 
 func `<`*(a, b: TimerEvent): bool = a.timestamp < b.timestamp
 
+
 #
 # Strategy Base
 #
 
-func initStrategyBase*(orderIdBase: string): StrategyBase =
+
+func initStrategyBase*(strategyId: string, orderIdBase: string): StrategyBase =
   StrategyBase(
+    strategyId: strategyId,
     orderIdBase: orderIdBase,
     pendingOrders: initTable[ClientOrderId, SysOrder](),
     openOrders: initTable[OrderId, SysOrder](),
   )
 
-func initStrategyBase*(base: var StrategyBase, orderIdBase: string) =
+func initStrategyBase*(base: var StrategyBase, strategyId: string, orderIdBase: string) =
   # Really annoying, but apparently this is the recommended way to do base class init in nim
-  base = initStrategyBase(orderIdBase)
+  base = initStrategyBase(strategyId, orderIdBase)
 
 func curTime*(base: StrategyBase): lent Timestamp = base.curTime
 func curEventNum*(base: StrategyBase): int = base.curEventNum

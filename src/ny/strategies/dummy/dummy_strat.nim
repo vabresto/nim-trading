@@ -42,8 +42,8 @@ type
     lastBar: Option[BarDetails]
 
 
-func initDummyStrategy*(orderIdBase: string): DummyStrategyState =
-  result.initStrategyBase(orderIdBase)
+func initDummyStrategy*(strategyId: string, orderIdBase: string): DummyStrategyState =
+  result.initStrategyBase(strategyId, orderIdBase)
 
 
 func closeAllOpenOrders(state: var DummyStrategyState): seq[OutputEvent] {.raises: [].} =
