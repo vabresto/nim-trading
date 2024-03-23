@@ -3,7 +3,6 @@
 
 import std/asyncdispatch
 import std/enumerate
-import std/json
 import std/net
 import std/options
 import std/os
@@ -62,16 +61,9 @@ proc main() {.raises: [].} =
               if getNowUtc().toDateTime().getDateStr() != today:
                 break
 
-              let replyBlock = waitFor ws.receiveMdWsReply()
-
-              for idx, reply in enumerate(replyBlock.parsedMd):
-                let symbol = block:
-                  let symbol = reply.getSymbol()
-                  if symbol.isNone:
-                    continue
-                  symbol.get
-                
-                let streamName = makeMdStreamName(today, symbol)
+              let replyBlock = waitFor ws.skimMdWsReply()
+              for idx, reply in enumerate(replyBlock.rawMd):
+                let streamName = makeMdStreamName(today, reply.symbol)
                 let writeResult = redis.cmd(@[
                   "XADD", streamName, "*",
                   "md_raw_data", $(replyBlock.rawMd[idx]),
