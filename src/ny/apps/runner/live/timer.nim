@@ -73,16 +73,29 @@ proc waitForNextEvent(sched: var TimerEventScheduler): QueuedTimerEvent =
   cCall(pthread_mutex_lock(sched.mutex.addr), "(waitForNextEvent) Failed to lock TimerEventScheduler mutex")
   
   while sched.events.len == 0 or sched.events[0].event.timestamp > getNowUtc():
+    trace "Waiting for next event; non queued"
     if sched.events.len == 0:
       cCall(pthread_cond_wait(sched.cv.addr, sched.mutex.addr), "(waitForNextEvent) Failed to wait for TimerEventScheduler cv")
     else:
       let target = sched.events[0].event.timestamp
+      trace "Waiting for next event; queue not empty", wakeUp=sched.events[0].event.timestamp, queueSize=sched.events.len
+
+      if target <= getNowUtc():
+        result = sched.events.pop
+        cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (1)")
+        return # just be explicit
+
       let timespec = Timespec(tv_sec: cast[posix.Time](target.epoch.clong), tv_nsec: target.nanos)
+      let timeoutErr = pthread_cond_timedwait(sched.cv.addr, sched.mutex.addr, timespec.addr)
+      if timeoutErr == 60:
+        # Timeout errors in this context mean that we hit our target time
+        discard
+      elif timeoutErr != 0:
+        error "(waitForNextEvent) Failed to timed wait for TimerEventScheduler cv", target, curTime=getNowUtc(), timeoutErr=timeoutErr, failReason=strerror(timeoutErr)
 
-      trace "Trying to wait", timespec, target
-      cCall(pthread_cond_timedwait(sched.cv.addr, sched.mutex.addr, timespec.addr), "(waitForNextEvent) Failed to timed wait for TimerEventScheduler cv")
-
-  return sched.events.pop
+  result = sched.events.pop
+  cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (2)")
+  return # just be explicit
 
 
 proc timerInsertionThreadEx(sched: ptr TimerEventScheduler) {.thread, raises: [].} =
