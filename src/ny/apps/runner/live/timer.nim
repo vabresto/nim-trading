@@ -23,9 +23,9 @@ type
     event: TimerEvent
 
   TimerEventScheduler* = ref object
-    events*: HeapQueue[QueuedTimerEvent]
-    mutex*: Pthread_mutex
-    cv*: Pthread_cond
+    mutex: Pthread_mutex
+    events {.guard: mutex.}: HeapQueue[QueuedTimerEvent]
+    cv {.guard: mutex.}: Pthread_cond
 
 
 func `<`(a, b: QueuedTimerEvent): bool = a.event < b.event
@@ -54,9 +54,11 @@ template cCall(call: untyped, msg: string): untyped =
 
 proc newTimerEventScheduler(): TimerEventScheduler =
   new(result)
-  result.events = initHeapQueue[QueuedTimerEvent]()
-  cCall(pthread_mutex_init(result.mutex.addr, nil), "Failed to initialize TimerEventScheduler mutex; terminating", quit 216)
-  cCall(pthread_cond_init(result.cv.addr, nil), "Failed to initialize TimerEventScheduler cond var; terminating", quit 217)
+
+  {.locks: [result.mutex].}:
+    result.events = initHeapQueue[QueuedTimerEvent]()
+    cCall(pthread_mutex_init(result.mutex.addr, nil), "Failed to initialize TimerEventScheduler mutex; terminating", quit 216)
+    cCall(pthread_cond_init(result.cv.addr, nil), "Failed to initialize TimerEventScheduler cond var; terminating", quit 217)
 
 
 # Note: We don't have any clean up for this, but that's fine because this lives for the entire lifetime of the program
@@ -65,38 +67,39 @@ var gEventScheduler = newTimerEventScheduler()
 
 proc addEvent(sched: var TimerEventScheduler, msg: QueuedTimerEvent) {.gcsafe.} =
   cCall(pthread_mutex_lock(sched.mutex.addr), "(addEvent) Failed to lock TimerEventScheduler mutex")
-
-  sched.events.push QueuedTimerEvent(symbol: msg.symbol, event: msg.event)
-  cCall(pthread_cond_signal(sched.cv.addr), "(addEvent) Failed to signal TimerEventScheduler cv")
-  cCall(pthread_mutex_unlock(sched.mutex.addr), "(addEvent) Failed to unlock TimerEventScheduler mutex")
+  {.locks: [sched.mutex].}:
+    sched.events.push QueuedTimerEvent(symbol: msg.symbol, event: msg.event)
+    cCall(pthread_cond_signal(sched.cv.addr), "(addEvent) Failed to signal TimerEventScheduler cv")
+    cCall(pthread_mutex_unlock(sched.mutex.addr), "(addEvent) Failed to unlock TimerEventScheduler mutex")
 
 
 proc waitForNextEvent(sched: var TimerEventScheduler): QueuedTimerEvent =
   cCall(pthread_mutex_lock(sched.mutex.addr), "(waitForNextEvent) Failed to lock TimerEventScheduler mutex")
   
-  while sched.events.len == 0 or sched.events[0].event.timestamp > getNowUtc():
-    trace "Waiting for next event; non queued"
-    if sched.events.len == 0:
-      cCall(pthread_cond_wait(sched.cv.addr, sched.mutex.addr), "(waitForNextEvent) Failed to wait for TimerEventScheduler cv")
-    else:
-      let target = sched.events[0].event.timestamp
-      trace "Waiting for next event; queue not empty", wakeUp=sched.events[0].event.timestamp, queueSize=sched.events.len
+  {.locks: [sched.mutex].}:
+    while sched.events.len == 0 or sched.events[0].event.timestamp > getNowUtc():
+      trace "Waiting for next event; non queued"
+      if sched.events.len == 0:
+        cCall(pthread_cond_wait(sched.cv.addr, sched.mutex.addr), "(waitForNextEvent) Failed to wait for TimerEventScheduler cv")
+      else:
+        let target = sched.events[0].event.timestamp
+        trace "Waiting for next event; queue not empty", wakeUp=sched.events[0].event.timestamp, queueSize=sched.events.len
 
-      if target <= getNowUtc():
-        result = sched.events.pop
-        cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (1)")
-        return # just be explicit
+        if target <= getNowUtc():
+          result = sched.events.pop
+          cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (1)")
+          return # just be explicit
 
-      let timespec = Timespec(tv_sec: cast[posix.Time](target.epoch.clong), tv_nsec: target.nanos)
-      let timeoutErr = pthread_cond_timedwait(sched.cv.addr, sched.mutex.addr, timespec.addr)
-      if timeoutErr == ETIMEDOUT:
-        # Timeout errors in this context mean that we hit our target time
-        discard
-      elif timeoutErr != 0:
-        error "(waitForNextEvent) Failed to timed wait for TimerEventScheduler cv", target, curTime=getNowUtc(), timeoutErr=timeoutErr, failReason=strerror(timeoutErr)
+        let timespec = Timespec(tv_sec: cast[posix.Time](target.epoch.clong), tv_nsec: target.nanos)
+        let timeoutErr = pthread_cond_timedwait(sched.cv.addr, sched.mutex.addr, timespec.addr)
+        if timeoutErr == ETIMEDOUT:
+          # Timeout errors in this context mean that we hit our target time
+          discard
+        elif timeoutErr != 0:
+          error "(waitForNextEvent) Failed to timed wait for TimerEventScheduler cv", target, curTime=getNowUtc(), timeoutErr=timeoutErr, failReason=strerror(timeoutErr)
 
-  result = sched.events.pop
-  cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (2)")
+    result = sched.events.pop
+    cCall(pthread_mutex_unlock(sched.mutex.addr), "(waitForNextEvent) Failed to unlock TimerEventScheduler mutex (2)")
   return # just be explicit
 
 

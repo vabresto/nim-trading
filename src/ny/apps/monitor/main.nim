@@ -1,3 +1,5 @@
+import std/asyncdispatch
+import std/json
 import std/net
 import std/rlocks
 import std/options
@@ -16,6 +18,7 @@ import mummy/routers
 import ny/core/env/envs
 import ny/core/heartbeat/client
 import ny/core/types/timestamp
+import ny/core/inspector/server as inspector_server
 
 const kHost = "0.0.0.0"
 const kPort = 8080.Port
@@ -25,8 +28,9 @@ gWebsocketsLock.initRLock()
 
 var gWebsockets {.guard: gWebsocketsLock.} = initHashSet[WebSocket]()
 var heartbeatsThread: Thread[seq[string]]
+var monitorThread: Thread[void]
 
-proc runHeartbeatsThread(targets: seq[string]) =
+proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
   while true:
     let curTime = getNowUtc()
     var heartbeats = initTable[string, bool]()
@@ -57,6 +61,16 @@ proc runHeartbeatsThread(targets: seq[string]) =
     msg &= """
         </tbody>
       </table>
+    """
+
+    {.gcsafe.}:
+      let strategyStates = getStrategyStates()
+
+    msg &= fmt"""
+      <br>
+      <div>
+        {strategyStates}
+      </div>
     </div>
     """
 
@@ -121,4 +135,5 @@ let targets = block:
 let server = newServer(router, websocketHandler)
 info "Serving ...", host=kHost, port=kPort
 createThread(heartbeatsThread, runHeartbeatsThread, targets)
+createThread(monitorThread, runMonitorServer)
 server.serve(kPort, kHost)
