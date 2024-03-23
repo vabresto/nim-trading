@@ -50,6 +50,9 @@ proc main() {.raises: [].} =
               let replyParseAttempt = replyRaw[].parseOuStreamResponse
               if replyParseAttempt.isOk:
                 let reply = replyParseAttempt[]
+
+                trace "Got reply", reply
+
                 lastIds[reply.stream] = reply.id
                 inc streamEventsProcessed[reply.stream]
 

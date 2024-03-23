@@ -44,7 +44,7 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
   while true:
     var resp: OutputEventMsg
     outChan.recv(resp)
-    info "Got output event", outputEvent=resp
+    trace "Got output event", outputEvent=resp
     case resp.event.kind
     of Timer:
       timerChan.send(TimerChanMsg(symbol: resp.symbol, timer: resp.event.timer))

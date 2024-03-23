@@ -60,10 +60,12 @@ proc main() {.raises: [].} =
 
               let replyBlock = waitFor ws.skimMdWsReply()
               for idx, reply in enumerate(replyBlock.rawMd):
+                trace "Got reply", reply
+
                 let streamName = makeMdStreamName(today, reply.symbol)
                 let writeResult = redis.cmd(@[
                   "XADD", streamName, "*",
-                  "md_raw_data", $(replyBlock.rawMd[idx]),
+                  "md_raw_data", replyBlock.rawMd[idx].msg,
                   "md_receive_timestamp", $replyBlock.receiveTs,
                 ])
 

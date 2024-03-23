@@ -54,6 +54,9 @@ proc main() {.raises: [].} =
 
           let reply = waitFor ws.receiveTradeUpdateReply(true)
           if reply.isSome:
+
+            trace "Got reply", reply=reply.get
+
             let streamName = makeOuStreamName(today, reply.get.ou.symbol)
             info "Writing to stream", streamName
             let writeResult = redis.cmd(@[
