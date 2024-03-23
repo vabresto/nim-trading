@@ -1,3 +1,7 @@
+import std/net
+import std/options
+import std/json
+
 import chronicles
 import threading/channels
 
@@ -6,6 +10,7 @@ import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/strategies/dummy/dummy_strat
 import ny/core/types/timestamp
+import ny/core/inspector/client
 
 
 logScope:
@@ -15,10 +20,13 @@ logScope:
 type
   RunnerThreadArgs* = object
     symbol*: string
+    monitorAddress*: Option[string]
+    monitorPort*: Option[Port]
 
 
 proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
   dynamicLogScope(symbol=args.symbol):
+    let monSock = getMonitorSocket(args.monitorAddress, args.monitorPort)
     let oc = getTheOutputChannel()
     let ic = block:
       try:
@@ -46,3 +54,9 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
           oc.send(OutputEventMsg(symbol: args.symbol, event: resp))
         except Exception:
           error "Failed to send request!", resp
+
+      if resps.len > 0 and monSock.isSome:
+        try:
+          initPushMessage(base = strategy, strategy = %*strategy).pushStrategyState(monSock.get)
+        except OSError, SslError:
+          error "Failed to push strategy state update message to monitoring socket"

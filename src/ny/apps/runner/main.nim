@@ -99,7 +99,7 @@ proc main() =
             cliArgs.symbols[0]
           else:
             "FAKEPACA"
-          var sim = initSimulator(today.parse("yyyy-MM-dd"), symbol)
+          var sim = initSimulator(today.parse("yyyy-MM-dd"), symbol, cliArgs.monitorAddress, cliArgs.monitorPort)
           sim.simulate()
           info "Simulated runner done"
         else:
@@ -107,7 +107,7 @@ proc main() =
           withRedis(redis):
             var runnerThreads = newSeq[Thread[RunnerThreadArgs]](mdSymbols.len)
             for idx, symbol in enumerate(mdSymbols):
-              createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol))
+              createThread(runnerThreads[idx], runner, RunnerThreadArgs(symbol: symbol, monitorAddress: cliArgs.monitorAddress, monitorPort: cliArgs.monitorPort))
             createTimerThread()
             createMarketOutputThread(mdSymbols)
 

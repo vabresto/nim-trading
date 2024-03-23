@@ -1,4 +1,6 @@
 import std/heapqueue
+import std/json
+import std/net
 import std/options
 import std/times
 
@@ -15,6 +17,7 @@ import ny/core/md/md_types
 import ny/core/types/strategy_base
 import ny/core/types/timestamp
 import ny/strategies/dummy/dummy_strat
+import ny/core/inspector/client
 
 logScope:
   topics = "sys sys:sim sim-runner"
@@ -31,6 +34,8 @@ type
     timerItr: iterator(sim: var Simulator): Option[TimerEvent]{.closure, gcsafe.}
     mdItr: iterator(): Option[MarketDataUpdate]{.closure, gcsafe.}
     ouItr: iterator(sim: var Simulator): Option[SysOrderUpdateEvent]{.closure, gcsafe.}
+
+    monitorSocket: Option[Socket]
 
 
 proc `<`(a, b: SysOrderUpdateEvent): bool = a.timestamp < b.timestamp
@@ -57,7 +62,7 @@ proc createEmptyOrderUpdateIterator(): auto =
     error "End of order update iterator?"
   )
 
-proc initSimulator*(date: Datetime, symbol: string): Simulator =
+proc initSimulator*(date: Datetime, symbol: string, monitorAddress: Option[string], monitorPort: Option[Port]): Simulator =
   let db = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
 
   Simulator(
@@ -67,6 +72,7 @@ proc initSimulator*(date: Datetime, symbol: string): Simulator =
     timerItr: createEmptyTimerIterator(),
     mdItr: createMarketDataIterator(db, symbol, date),
     ouItr: createEmptyOrderUpdateIterator(),
+    monitorSocket: getMonitorSocket(monitorAddress, monitorPort),
   )
 
 
@@ -132,7 +138,11 @@ proc createEventIterator*(): auto =
       if nextOuEvent.isSome and nextOuEvent.get.timestamp == nextEvTimestamp:
         yield InputEvent(kind: OrderUpdate, ou: nextOuEvent.get)
         nextOuEvent = sim.getNextOrderUpdateEvent()
+    
     info "Done event loop"
+    if sim.monitorSocket.isSome:
+      sim.monitorSocket.get.close()
+      info "Closed monitoring socket"
   )
 
 
@@ -189,3 +199,6 @@ proc simulate*(sim: var Simulator) =
           error "Got market data event from matchingEngine.onRequest ?!", event=resp
         of CommandFailed:
           error "Requested command failed from matchingEngine.onRequest", event=resp
+
+    if cmds.len > 0 and sim.monitorSocket.isSome:
+      initPushMessage(base = strategy, strategy = %*strategy).pushStrategyState(sim.monitorSocket.get)

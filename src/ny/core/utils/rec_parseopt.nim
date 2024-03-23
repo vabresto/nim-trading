@@ -1,5 +1,6 @@
 ## This module implements options parsing for recording applications
 
+import std/net
 import std/options
 import std/parseopt
 import std/strutils
@@ -17,6 +18,11 @@ type
     date*: Option[DateTime]
     symbols*: seq[string]
     heartbeat*: bool = false
+    monitorAddress*: Option[string]
+    monitorPort*: Option[Port]
+
+func monitoringEnabled*(cliArgs: ParsedCliArgs): bool =
+  cliArgs.monitorAddress.isSome and cliArgs.monitorPort.isSome
 
 proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs {.raises: [].} =
   # If cmdLine is empty, will pull cli args. Otherwise will read the input string
@@ -49,6 +55,16 @@ proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs {.raises: [].} =
         of "symbol", "symbols":
           result.symbols.add val.toUpper
           readingSymbols = true
+        of "monitor-address":
+          result.monitorAddress = some val
+          if result.monitorPort.isNone:
+            result.monitorPort = some 5001.Port
+        of "monitor-port":
+          try:
+            result.monitorPort = some val.parseInt.Port
+          except ValueError:
+            error "Failed to parse as port", val
+            quit 208
         else:
           error "Got unknown options --", key, val
           quit 208
