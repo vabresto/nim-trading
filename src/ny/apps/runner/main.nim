@@ -166,7 +166,7 @@ proc main() =
 
                   # Note: future optimization: can store these lookups somewhere
                   # currently this function takes a look but that's not necessary
-                  let (ic, _) = getChannelsForSymbol(symbol)
+                  let ic = getChannelForSymbol(symbol)
 
                   let inputEvent = case reply.kind
                   of MarketData:

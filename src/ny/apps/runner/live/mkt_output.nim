@@ -10,7 +10,6 @@ import ny/apps/runner/live/chan_types
 import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/core/types/tif
-import ny/apps/runner/live/timer_types
 import ny/core/env/envs
 import ny/core/trading/client as trading_client
 import ny/core/trading/types
@@ -48,7 +47,7 @@ proc marketOutputThreadEx(symbols: seq[string]) {.thread, raises: [].} =
     info "Got output event", outputEvent=resp
     case resp.event.kind
     of Timer:
-      timerChan.send(TimerChanMsg(symbol: resp.symbol, kind: CreateTimer, create: RequestTimer(timer: resp.event.timer)))
+      timerChan.send(TimerChanMsg(symbol: resp.symbol, timer: resp.event.timer))
     of OrderSend:
       let orderSentResp = case resp.event.orderKind:
         of Limit:

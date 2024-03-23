@@ -8,8 +8,8 @@ import std/rlocks
 import chronicles
 import threading/channels
 
+import ny/apps/runner/live/chan_types
 import ny/apps/runner/live/chans
-import ny/apps/runner/live/timer_types
 import ny/core/types/strategy_base
 import ny/core/types/timestamp
 
@@ -34,17 +34,16 @@ proc timerThreadEx() {.thread, raises: [].} =
 
   while true:
     var msg: TimerChanMsg
+    # TODO: Use a pthread_cond here instead
     if chan.tryRecv(msg):
-      case msg.kind
-      of CreateTimer:
-        trace "Creating timer", timer=msg.create.timer
-        timers.push(QueuedTimerEvent(symbol: msg.symbol, event: msg.create.timer))
+      trace "Creating timer", timer=msg.timer
+      timers.push(QueuedTimerEvent(symbol: msg.symbol, event: msg.timer))
 
     let nowTs = getNowUtc()
     while timers.len > 0 and timers[0].event.timestamp <= nowTs:
       let queued = timers.pop
       try:
-        let (ic, _) = getChannelsForSymbol(queued.symbol)
+        let ic = getChannelForSymbol(queued.symbol)
         trace "Sending timer", timer=queued.event
         ic.send(InputEvent(kind: Timer, timer: queued.event))
       except KeyError:

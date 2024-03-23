@@ -6,7 +6,6 @@ import ny/apps/runner/live/chans
 import ny/core/types/strategy_base
 import ny/strategies/dummy/dummy_strat
 import ny/core/types/timestamp
-import ny/core/types/strategy_base
 
 
 logScope:
@@ -20,10 +19,11 @@ type
 
 proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
   dynamicLogScope(symbol=args.symbol):
-    let (ic, oc) = block:
+    let oc = getTheOutputChannel()
+    let ic = block:
       try:
         {.gcsafe.}:
-          getChannelsForSymbol(args.symbol)
+          getChannelForSymbol(args.symbol)
       except KeyError:
         error "Failed to initialize runner; quitting", args
         return
