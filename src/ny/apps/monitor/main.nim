@@ -43,6 +43,7 @@ proc renderNumConnectedClients(): string {.gcsafe.} =
   </div>
   """
 
+
 proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
   var totalNumHeartbeatsProcessed = 0
   var heartbeats = initTable[string, bool]()
@@ -99,6 +100,7 @@ proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
     
     sleep(5_000)
 
+
 proc indexHandler(request: Request) =
   var headers: HttpHeaders
   headers["Content-Type"] = "text/html"
@@ -117,11 +119,13 @@ proc indexHandler(request: Request) =
   </body>
   """)
 
+
 proc upgradeHandler(request: Request) =
   let websocket = request.upgradeToWebSocket()
   withRLock(gWebsocketsLock):
     {.gcsafe.}:
       gWebsockets.incl websocket
+
 
 proc websocketHandler(
   websocket: WebSocket,
@@ -141,26 +145,31 @@ proc websocketHandler(
       {.gcsafe.}:
         gWebsockets.excl websocket
 
-var router: Router
-router.get("/", indexHandler)
-router.get("/ws", upgradeHandler)
+proc main() = 
+  var router: Router
+  router.get("/", indexHandler)
+  router.get("/ws", upgradeHandler)
 
-let targets = block:
-  let requestedTargets = getOptEnv("NY_MON_TARGETS")
-  if requestedTargets.isSome:
-    let parsed = requestedTargets.get.split(",").map(x => x.strip)
-    if parsed.len > 0:
-      info "Monitoring services", parsed
-      parsed
+  let targets = block:
+    let requestedTargets = getOptEnv("NY_MON_TARGETS")
+    if requestedTargets.isSome:
+      let parsed = requestedTargets.get.split(",").map(x => x.strip)
+      if parsed.len > 0:
+        info "Monitoring services", parsed
+        parsed
+      else:
+        warn "No monitor targets requested, defaulted to local (127.0.0.1)"
+        @["127.0.0.1"]
     else:
       warn "No monitor targets requested, defaulted to local (127.0.0.1)"
       @["127.0.0.1"]
-  else:
-    warn "No monitor targets requested, defaulted to local (127.0.0.1)"
-    @["127.0.0.1"]
 
-let server = newServer(router, websocketHandler)
-info "Serving ...", host=kHost, port=kPort
-createThread(heartbeatsThread, runHeartbeatsThread, targets)
-createThread(monitorThread, runMonitorServer)
-server.serve(kPort, kHost)
+  let server = newServer(router, websocketHandler)
+  info "Serving ...", host=kHost, port=kPort
+  createThread(heartbeatsThread, runHeartbeatsThread, targets)
+  createThread(monitorThread, runMonitorServer)
+  server.serve(kPort, kHost)
+
+
+when isMainModule:
+  main()
