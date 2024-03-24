@@ -19,6 +19,7 @@ import ny/core/env/envs
 import ny/core/heartbeat/client
 import ny/core/types/timestamp
 import ny/core/inspector/server as inspector_server
+import ny/apps/monitor/render_strategy_state
 
 const kHost = "0.0.0.0"
 const kPort = 8080.Port
@@ -31,9 +32,12 @@ var heartbeatsThread: Thread[seq[string]]
 var monitorThread: Thread[void]
 
 proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
+  var totalNumHeartbeatsProcessed = 0
+  var heartbeats = initTable[string, bool]()
+
   while true:
     let curTime = getNowUtc()
-    var heartbeats = initTable[string, bool]()
+    
     for target in targets:
       heartbeats[target] = target.pingHeartbeat
 
@@ -58,38 +62,44 @@ proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
       </tr>
       """
 
-    msg &= """
+    msg &= fmt"""
         </tbody>
       </table>
-    """
-
-    {.gcsafe.}:
-      let strategyStates = getStrategyStates()
-
-    msg &= fmt"""
       <br>
-      <div>
-        {strategyStates}
-      </div>
     </div>
     """
+
+    let renderedStrategies = renderStrategyStates()
 
     withRLock(gWebsocketsLock):
       {.gcsafe.}:
         for ws in gWebsockets:
           ws.send(msg)
+          ws.send(renderedStrategies)
+
+    inc totalNumHeartbeatsProcessed
+
+    # 12 count, 5 sec sleep per heartbeat = log once per minute
+    if totalNumHeartbeatsProcessed mod 12 == 0:
+      info "Monitor server still alive", totalNumHeartbeatsProcessed
     
-    sleep(15_000)
+    sleep(5_000)
 
 proc indexHandler(request: Request) =
   var headers: HttpHeaders
   headers["Content-Type"] = "text/html"
   request.respond(200, headers, fmt"""
-  <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
-  <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"></script>
-  <div hx-ext="ws" ws-connect="/ws">
-    <div id="heartbeats"</div>
-  </div>
+  <head>
+    <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"></script>
+  </head>
+
+  <body>
+    <div hx-ext="ws" ws-connect="/ws">
+      <div id="heartbeats"></div>
+      {renderStrategyStates()}
+    </div>
+  </body>
   """)
 
 proc upgradeHandler(request: Request) =
