@@ -18,7 +18,7 @@ proc renderHeartbeats*(curTime: Timestamp, heartbeats: Table[string, bool]): str
         <table class="striped">
           <thead>
             <tr>
-              <th>Target</th>
+              <th>Service</th>
               <th>Status</th>
             </tr>
           </thead>
@@ -26,10 +26,15 @@ proc renderHeartbeats*(curTime: Timestamp, heartbeats: Table[string, bool]): str
     """
 
     for target, status in heartbeats:
+      let statusColor = if status:
+        "green"
+      else:
+        "red"
+
       msg &= fmt"""
       <tr>
         <td>{target}</td>
-        <td>{status}</td>
+        <td style="color: {statusColor};">{status}</td>
       </tr>
       """
 

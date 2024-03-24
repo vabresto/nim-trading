@@ -33,11 +33,17 @@ proc renderStrategyStates*(state: WsClientState): string =
   let symbol = state.symbol
   let details = strategyStates[strategy][symbol]
 
+  let pnl = details["base"]["stratPnl"].getPrice
+  let pnlColour = if pnl >= Price(dollars: 0, cents: 0):
+    "green"
+  else:
+    "red"
+
   result = fmt"""
   <div id="strategy-states" hx-swap-oob="true">
     <section>
       <h2>Strategy Stats: {strategy}</h2>
-      <h4>{(if details["isSim"].getBool: "Simulation" else: "Live")}</h4>
+      <h4>Mode: {(if details["isSim"].getBool: "Simulation" else: "Live")}</h4>
 
       <div class="overflow-auto">
         <table class="striped">
@@ -56,14 +62,25 @@ proc renderStrategyStates*(state: WsClientState): string =
           <tr><td>Event Num</td><td>{details["base"]["curEventNum"].getInt}</td></tr>
           <tr><td>Position</td><td>{details["base"]["position"].getInt}</td></tr>
           <tr><td>Position VWAP</td><td>${details["base"]["positionVwap"].getFloat}</td></tr>
-          <tr><td>Strategy PnL</td><td>${details["base"]["stratPnl"].getPrice}</td></tr>
+          <tr><td>Strategy PnL</td><td style="color: {pnlColour};">${pnl}</td></tr>
 
           <tr>
             <td>NBBO</td>
             <td>
-              <strong>Bid:</strong> {details["base"]["nbbo"]["bidSize"].getInt} @ ${details["base"]["nbbo"]["bidPrice"].getPrice} <br>
-              <strong>Ask:</strong> {details["base"]["nbbo"]["askSize"].getInt} @ ${details["base"]["nbbo"]["askPrice"].getPrice} <br>
-              <strong>Timestamp:</strong> {details["base"]["nbbo"]["timestamp"].getTimestamp.friendlyString}
+  """
+
+  if details["base"]["nbbo"] == newJNull():
+    result &= """
+      <span style="color: red;">No NBBOs Yet</span>
+    """
+  else:
+    result &= fmt"""
+      <strong>Bid:</strong> {details["base"]["nbbo"]["bidSize"].getInt} @ ${details["base"]["nbbo"]["bidPrice"].getPrice} <br>
+      <strong>Ask:</strong> {details["base"]["nbbo"]["askSize"].getInt} @ ${details["base"]["nbbo"]["askPrice"].getPrice} <br>
+      <strong>Timestamp:</strong> {details["base"]["nbbo"]["timestamp"].getTimestamp.friendlyString}
+    """
+
+  result &= fmt"""
             </td>
           </tr>
 
@@ -196,12 +213,23 @@ proc renderStrategyStates*(state: WsClientState): string =
               <tr>
                 <td>Minute Bar</td>
                 <td>
-                  <strong>Open:</strong> {details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
-                  <strong>High:</strong> {details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
-                  <strong>Low:</strong> {details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
-                  <strong>Close:</strong> {details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
-                  <strong>Volume:</strong> {details["strategy"]["lastBar"]["volume"].getInt} <br>
-                  <strong>Timestamp:</strong> {details["strategy"]["lastBar"]["timestamp"].getTimestamp.friendlyString}
+    """
+
+    if details["strategy"]["lastBar"] == newJNull():
+      result &= """
+        <span style="color: red;">No Minute Bars Yet</span>
+      """
+    else:
+      result &= fmt"""
+        <strong>Open:</strong> {details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
+        <strong>High:</strong> {details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
+        <strong>Low:</strong> {details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
+        <strong>Close:</strong> {details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
+        <strong>Volume:</strong> {details["strategy"]["lastBar"]["volume"].getInt} <br>
+        <strong>Timestamp:</strong> {details["strategy"]["lastBar"]["timestamp"].getTimestamp.friendlyString}
+      """
+
+    result &= """
                 </td>
               </tr>
             </tbody>
