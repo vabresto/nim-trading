@@ -1,5 +1,4 @@
 import std/asyncdispatch
-import std/json
 import std/net
 import std/rlocks
 import std/options
@@ -132,14 +131,15 @@ proc websocketHandler(
   event: WebSocketEvent,
   message: Message
 ) =
-  warn "Unexpectedly got message from client websocket", event, message
   case event:
   of OpenEvent:
     discard
   of MessageEvent:
+    warn "Unexpectedly got message from client websocket", event, message
     echo message.kind, ": ", message.data
+    # TODO: We do want to start handling getting messages from clients
   of ErrorEvent:
-    discard
+    error "Unexpectedly got error message from client websocket", event, message
   of CloseEvent:
     withRLock(gWebsocketsLock):
       {.gcsafe.}:
