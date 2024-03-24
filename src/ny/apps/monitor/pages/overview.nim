@@ -1,4 +1,3 @@
-import std/options
 import std/strformat
 
 import chronicles
@@ -51,34 +50,10 @@ proc renderNumConnectedClientsImpl*(manager: WsManager): string {.gcsafe.} =
   """
 
 
-proc getRenderNumConnectedClients*(): WsSendRender =
-  (proc (state: WsClientState): Option[string] {.nimcall, gcsafe, raises: [].} =
-    let manager = getWsManager()
-    if state.kind == Overview:
-      try:
-        some renderNumConnectedClientsImpl(manager)
-      except ValueError:
-        error "Value error trying to render num connected clients"
-        none[string]()
-    else:
-      none[string]()
-  )
-
-
-proc renderOverviewPage*(): string =
+proc renderOverviewPage*(state: WsClientState): string =
   fmt"""
     <div id="page">
       {renderHeartbeats(getNowUtc(), getHeartbeats())}
       {renderNumConnectedClientsImpl(getWsManager())}
     </div>
   """
-
-
-proc getRenderOverviewPage*(): WsSendRender =
-  (proc (state: WsClientState): Option[string] {.closure, gcsafe, raises: [].} =
-    try:
-      some renderOverviewPage()
-    except ValueError:
-      error "Failed to render overview page"
-      none[string]()
-  )

@@ -12,7 +12,7 @@ import ny/apps/monitor/ws_manager
 
 
 
-proc renderStrategyStates*(): string =
+proc renderStrategyStates*(state: WsClientState): string =
   {.gcsafe.}:
     let strategyStates = getStrategyStates()
   fmt"""
@@ -22,19 +22,9 @@ proc renderStrategyStates*(): string =
   """
 
 
-proc getRenderStrategyStates*(): WsSendRender =
-  (proc (state: WsClientState): Option[string] {.nimcall, gcsafe, raises: [].} =
-    try:
-      some renderStrategyStates()
-    except ValueError:
-      error "Failed to render strategy states"
-      none[string]()
-  )
-
-
-proc renderStrategyDetailsPage*(): string =
+proc renderStrategyDetailsPage*(state: WsClientState): string =
   fmt"""
     <div id="page">
-      {renderStrategyStates()}
+      {renderStrategyStates(state)}
     </div>
   """

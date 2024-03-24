@@ -12,13 +12,13 @@ proc renderPage*(state: WsClientState): Option[string] {.gcsafe, raises: [].} =
   case state.kind
   of Overview:
     try:
-      some renderOverviewPage()
+      some renderOverviewPage(state)
     except ValueError:
       error "Failed to render overview page"
       none[string]()
   of StrategyDetails:
     try:
-      some renderStrategyDetailsPage()
+      some renderStrategyDetailsPage(state)
     except ValueError:
       error "Failed to render strategy details page"
       none[string]()
