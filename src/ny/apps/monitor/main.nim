@@ -31,6 +31,18 @@ var gWebsockets {.guard: gWebsocketsLock.} = initHashSet[WebSocket]()
 var heartbeatsThread: Thread[seq[string]]
 var monitorThread: Thread[void]
 
+
+proc renderNumConnectedClients(): string {.gcsafe.} =
+  var numClients = 0
+  withRLock(gWebsocketsLock):
+    {.gcsafe.}:
+      numClients = gWebsockets.len
+  fmt"""
+  <div id="server-info" hx-swap-oob="true">
+    <p>Num connected clients: {numClients}<p>
+  </div>
+  """
+
 proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
   var totalNumHeartbeatsProcessed = 0
   var heartbeats = initTable[string, bool]()
@@ -70,11 +82,13 @@ proc runHeartbeatsThread(targets: seq[string]) {.thread.} =
     """
 
     let renderedStrategies = renderStrategyStates()
+    let serverInfo = renderNumConnectedClients()
 
     withRLock(gWebsocketsLock):
       {.gcsafe.}:
         for ws in gWebsockets:
           ws.send(msg)
+          ws.send(serverInfo)
           ws.send(renderedStrategies)
 
     inc totalNumHeartbeatsProcessed
@@ -97,6 +111,7 @@ proc indexHandler(request: Request) =
   <body>
     <div hx-ext="ws" ws-connect="/ws">
       <div id="heartbeats"></div>
+      {renderNumConnectedClients()}
       {renderStrategyStates()}
     </div>
   </body>
@@ -122,7 +137,9 @@ proc websocketHandler(
   of ErrorEvent:
     discard
   of CloseEvent:
-    discard
+    withRLock(gWebsocketsLock):
+      {.gcsafe.}:
+        gWebsockets.excl websocket
 
 var router: Router
 router.get("/", indexHandler)
