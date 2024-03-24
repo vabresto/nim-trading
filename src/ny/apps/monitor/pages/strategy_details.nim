@@ -1,5 +1,3 @@
-import std/strformat
-
 import std/json
 import std/strformat
 import std/tables
@@ -13,7 +11,6 @@ import ny/apps/monitor/ws_manager
 import ny/core/types/price
 import ny/core/types/timestamp
 import ny/core/db/mddb
-import ny/core/services/postgres
 import ny/core/env/envs
 
 
@@ -38,68 +35,76 @@ proc renderStrategyStates*(state: WsClientState): string =
 
   result = fmt"""
   <div id="strategy-states" hx-swap-oob="true">
-    <h2>Strategy Stats (Mode: {(if details["isSim"].getBool: "Simulation" else: "Live")})</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Key</th>
-          <th>Value</th>
-        </tr>
-      </thead>
-    <tbody>
-      <tr><td>Strategy</td><td>{strategy}</td><tr>
-      <tr><td>Symbol</td><td>{symbol}</td><tr>
-      <tr><td>Strategy Timestamp</td><td>{details["base"]["curTime"].getTimestamp}</td></tr>
-      <tr><td>Current Timestamp</td><td>{details["timestamp"].getTimestamp}</td></tr>
+    <section>
+      <h2>Strategy Stats: {strategy}</h2>
+      <h4>{(if details["isSim"].getBool: "Simulation" else: "Live")}</h4>
 
-      <tr><td>Event Num</td><td>{details["base"]["curEventNum"].getInt}</td><tr>
-      <tr><td>Position</td><td>{details["base"]["position"].getInt}</td><tr>
-      <tr><td>Position VWAP</td><td>${details["base"]["positionVwap"].getFloat}</td><tr>
-      <tr><td>Strategy PnL</td><td>${details["base"]["stratPnl"].getPrice}</td><tr>
+      <div class="overflow-auto">
+        <table class="striped">
+          <thead>
+            <tr>
+              <th>Key</th>
+              <th>Value</th>
+            </tr>
+          </thead>
+        <tbody>
+          <tr><td>Strategy</td><td>{strategy}</td></tr>
+          <tr><td>Symbol</td><td>{symbol}</td></tr>
+          <tr><td>Strategy Timestamp</td><td>{details["base"]["curTime"].getTimestamp.friendlyString}</td></tr>
+          <tr><td>Current Timestamp</td><td>{details["timestamp"].getTimestamp.friendlyString}</td></tr>
 
-      <tr>
-        <td>NBBO</td>
-        <td>
-        Bid: {details["base"]["nbbo"]["bidSize"].getInt} @ ${details["base"]["nbbo"]["bidPrice"].getPrice} <br>
-        Ask: {details["base"]["nbbo"]["askSize"].getInt} @ ${details["base"]["nbbo"]["askPrice"].getPrice} <br>
-        Timestamp: {details["base"]["nbbo"]["timestamp"].getTimestamp}
-        </td>
-      <tr>
+          <tr><td>Event Num</td><td>{details["base"]["curEventNum"].getInt}</td></tr>
+          <tr><td>Position</td><td>{details["base"]["position"].getInt}</td></tr>
+          <tr><td>Position VWAP</td><td>${details["base"]["positionVwap"].getFloat}</td></tr>
+          <tr><td>Strategy PnL</td><td>${details["base"]["stratPnl"].getPrice}</td></tr>
 
-      <tr><td>Orders Sent</td><td>{details["base"]["numOrdersSent"].getInt}</td><tr>
-      <tr><td>Orders Closed</td><td>{details["base"]["numOrdersClosed"].getInt}</td><tr>
+          <tr>
+            <td>NBBO</td>
+            <td>
+              <strong>Bid:</strong> {details["base"]["nbbo"]["bidSize"].getInt} @ ${details["base"]["nbbo"]["bidPrice"].getPrice} <br>
+              <strong>Ask:</strong> {details["base"]["nbbo"]["askSize"].getInt} @ ${details["base"]["nbbo"]["askPrice"].getPrice} <br>
+              <strong>Timestamp:</strong> {details["base"]["nbbo"]["timestamp"].getTimestamp.friendlyString}
+            </td>
+          </tr>
 
-      <tr><td>Shares Bought</td><td>{details["base"]["stratTotalSharesBought"].getInt}</td><tr>
-      <tr><td>Shares Sold</td><td>{details["base"]["stratTotalSharesSold"].getInt}</td><tr>
-      <tr><td>Notional Bought</td><td>${details["base"]["stratTotalNotionalBought"].getPrice}</td><tr>
-      <tr><td>Notional Sold</td><td>${details["base"]["stratTotalNotionalSold"].getPrice}</td><tr>
-    </tbody>
-    </table>
+          <tr><td>Orders Sent</td><td>{details["base"]["numOrdersSent"].getInt}</td></tr>
+          <tr><td>Orders Closed</td><td>{details["base"]["numOrdersClosed"].getInt}</td></tr>
+
+          <tr><td>Shares Bought</td><td>{details["base"]["stratTotalSharesBought"].getInt}</td></tr>
+          <tr><td>Shares Sold</td><td>{details["base"]["stratTotalSharesSold"].getInt}</td></tr>
+          <tr><td>Notional Bought</td><td>${details["base"]["stratTotalNotionalBought"].getPrice}</td></tr>
+          <tr><td>Notional Sold</td><td>${details["base"]["stratTotalNotionalSold"].getPrice}</td></tr>
+        </tbody>
+        </table>
+      </div>
+    </section>
   """
 
   block `PendingOrders`:
     result &= fmt"""
-      <h3>Pending Orders</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Client Order Id</th>
-            <th>Exchange Order Id</th>
-            <th>TIF</th>
-            <th>Kind</th>
-            <th>Side</th>
-            <th>Size</th>
-            <th>Price</th>
-            <th>Cum Shares Filled</th>
-          </tr>
-        </thead>
-      <tbody>
+      <section>
+        <h3>Pending Orders</h3>
+        <div class="overflow-auto">
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Client Order Id</th>
+                <th>Exchange Order Id</th>
+                <th>TIF</th>
+                <th>Kind</th>
+                <th>Side</th>
+                <th>Size</th>
+                <th>Price</th>
+                <th>Cum Shares Filled</th>
+              </tr>
+            </thead>
+          <tbody>
     """
 
     if details["base"]["pendingOrders"].len == 0:
       result &= """
       <tr>
-        <td colspan="8">No Pending Orders</td>
+        <td colspan="8" style="text-align: center;">No Pending Orders</td>
       </tr>
       """
 
@@ -118,33 +123,37 @@ proc renderStrategyStates*(state: WsClientState): string =
       """
 
     result &= """
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </section>
     """
 
   block `OpenOrders`:
     result &= fmt"""
-      <h3>Open Orders</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Client Order Id</th>
-            <th>Exchange Order Id</th>
-            <th>TIF</th>
-            <th>Kind</th>
-            <th>Side</th>
-            <th>Size</th>
-            <th>Price</th>
-            <th>Cum Shares Filled</th>
-          </tr>
-        </thead>
-      <tbody>
+      <section>
+        <h3>Open Orders</h3>
+        <div class="overflow-auto">
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Client Order Id</th>
+                <th>Exchange Order Id</th>
+                <th>TIF</th>
+                <th>Kind</th>
+                <th>Side</th>
+                <th>Size</th>
+                <th>Price</th>
+                <th>Cum Shares Filled</th>
+              </tr>
+            </thead>
+          <tbody>
     """
 
     if details["base"]["openOrders"].len == 0:
       result &= """
       <tr>
-        <td colspan="8">No Open Orders</td>
+        <td colspan="8" style="text-align: center;">No Open Orders</td>
       </tr>
       """
 
@@ -163,65 +172,73 @@ proc renderStrategyStates*(state: WsClientState): string =
       """
 
     result &= """
-      </tbody>
-    </table>
+          </tbody>
+        </table>
+      </div>
+    </section>
     """
 
   block `StrategySpecificStats`:
     result &= fmt"""
-      <h3>Strategy Specific Stats</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Key</th>
-            <th>Value</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>State</td><td>{details["strategy"]["state"].getStr}</td><tr>
-          <tr><td>Num Consecutive Increases</td><td>{details["strategy"]["numConsecIncreases"].getInt}</td><tr>
-          <tr>
-            <td>Minute Bar</td>
-            <td>
-            Open: {details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
-            High: {details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
-            Low: {details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
-            Close: {details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
-            Volume: {details["strategy"]["lastBar"]["volume"].getInt} <br>
-            Timestamp: {details["strategy"]["lastBar"]["timestamp"].getTimestamp}
-            </td>
-          <tr>
-        </tbody>
-      </table>
+      <section>
+        <h3>Strategy Specific Stats</h3>
+        <div class="overflow-auto">
+          <table class="striped">
+            <thead>
+              <tr>
+                <th>Key</th>
+                <th>Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>State</td><td>{details["strategy"]["state"].getStr}</td></tr>
+              <tr><td>Num Consecutive Increases</td><td>{details["strategy"]["numConsecIncreases"].getInt}</td></tr>
+              <tr>
+                <td>Minute Bar</td>
+                <td>
+                  <strong>Open:</strong> {details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
+                  <strong>High:</strong> {details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
+                  <strong>Low:</strong> {details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
+                  <strong>Close:</strong> {details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
+                  <strong>Volume:</strong> {details["strategy"]["lastBar"]["volume"].getInt} <br>
+                  <strong>Timestamp:</strong> {details["strategy"]["lastBar"]["timestamp"].getTimestamp.friendlyString}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
     """
 
   block `FillHistory`:
     try:
       let fills = gStrategyDetailsDb.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
       result &= """
-        <h3>Fill History</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Symbol</th>
-              <th>Event Timestamp</th>
-              <th>Event Type</th>
-              <th>Client Order Id</th>
-              <th>Side</th>
-              <th>Event Fill Quantity</th>
-              <th>Event Fill Price</th>
-              <th>Order Total Fill Quantity</th>
-              <th>Position Quantity</th>
-            </tr>
-          </thead>
-        <tbody>
+        <section>
+          <h3>Fill History</h3>
+          <div class="overflow-auto">
+            <table class="striped">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Symbol</th>
+                  <th>Event Timestamp</th>
+                  <th>Event Type</th>
+                  <th>Client Order Id</th>
+                  <th>Side</th>
+                  <th>Event Fill Quantity</th>
+                  <th>Event Fill Price</th>
+                  <th>Order Total Fill Quantity</th>
+                  <th>Position Quantity</th>
+                </tr>
+              </thead>
+            <tbody>
       """
       
       if fills.len == 0:
         result &= """
           <tr>
-            <td colspan="9">No Fill History</td>
+            <td colspan="9" style="text-align: center;">No Fill History</td>
           </tr>
         """
 
@@ -230,7 +247,7 @@ proc renderStrategyStates*(state: WsClientState): string =
           <tr>
             <td>{item.date}</td>
             <td>{item.symbol}</td>
-            <td>{item.eventTimestamp}</td>
+            <td>{item.eventTimestamp.friendlyString}</td>
             <td>{item.eventType}</td>
             <td>{item.clientOrderId}</td>
             <td>{item.side}</td>
@@ -242,8 +259,10 @@ proc renderStrategyStates*(state: WsClientState): string =
         """
 
       result &= """
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
+      </section>
       """
     except DbError:
       error "Failed to get fill history"

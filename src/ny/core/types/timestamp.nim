@@ -45,6 +45,9 @@ func `-`*(a: Timestamp, b: Timestamp): Duration {.noSideEffect.} =
 func `$`*(ts: Timestamp): string =
   ts.toDateTime.format(tsStringFormat)
 
+func friendlyString*(ts: Timestamp): string =
+  ts.toDateTime.format("yyyy-MM-dd' 'HH:mm:ss'.'fff")
+
 func `<`*(a, b: Timestamp): bool =
   if a.epoch == b.epoch:
     a.nanos < b.nanos

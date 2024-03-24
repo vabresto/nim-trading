@@ -1,5 +1,4 @@
 import std/json
-import std/strformat
 
 import chronicles
 import mummy
@@ -13,29 +12,37 @@ import ny/apps/monitor/pages
 proc indexHandler(request: Request) =
   let initalState = WsClientState(kind: Overview)
 
-  request.respond(200, @[("Content-Type", "text/html")], fmt"""
+  var response = """
   <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
     <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css"/>
   </head>
 
-  <body>
-    <div hx-ext="ws" ws-connect="/ws">
-      <form id="change-page" ws-send>
-        <input type="hidden" id="type" name="type" value="change-page">
-        
-        <input type="radio" id="new-page-overview" name="new-page" value="overview" checked>
-        <label for="new-page-overview">Overview</label><br>
-        <input type="radio" id="new-page-strategy-list" name="new-page" value="strategy-list">
-        <label for="new-page-strategy-list">Strategy List</label><br>
+  <body hx-ext="ws" ws-connect="/ws" style="padding: 20px;">
+    <header>
+      <nav style="width: 95%">
+        <ul>
+          <li><a class="contrast" ws-send hx-vals='{"type": "change-page", "new-page": "overview"}'><strong>NIM TRADING</strong></a></li>
+        </ul>
+        <ul>
+          <li><a ws-send hx-vals='{"type": "change-page", "new-page": "overview"}'>Overview</a></li>
+          <li><a ws-send hx-vals='{"type": "change-page", "new-page": "strategy-list"}'>Strategies</a></li>
+        </ul>
+      </nav>
+    </header>
+    <main>
+  """
 
-        <button type="submit">Submit</button>
-      </form>
-
-      {renderOverviewPage(initalState)}
-    </div>
+  response &= renderOverviewPage(initalState)
+  response &= """
+    </main>
   </body>
-  """)
+  """
+
+  request.respond(200, @[("Content-Type", "text/html")], response)
 
 
 proc upgradeHandler(request: Request) =
@@ -75,6 +82,9 @@ proc websocketHandler(
     except Exception:
       error "Unhandled exception handling websocket message", message, err=getCurrentExceptionMsg()
   of ErrorEvent:
+    if message.data.len == 0:
+      # Not sure why this happens sometimes, heartbeat?
+      return
     error "Unexpectedly got error message from client websocket", event, message
   of CloseEvent:
     let manager = getWsManager()
