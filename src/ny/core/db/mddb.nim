@@ -10,6 +10,7 @@ import jsony
 
 import ny/core/md/alpaca/types
 import ny/core/md/alpaca/ou_types
+import ny/core/types/price
 import ny/core/types/timestamp
 
 
@@ -190,3 +191,51 @@ proc insertRawOuEvent*(db: DbConn, id: string, date: string, ou: AlpacaOuWsReply
     ou.data.toJson(),
   )
 
+
+type
+  FillHistoryEvent* = object
+    date*: string
+    symbol*: string
+    eventTimestamp*: Timestamp
+    eventType*: string
+    clientOrderId*: string
+    side*: string
+    eventFillQty*: int
+    eventFillPrice*: Price
+    orderTotalFillQty*: int
+    positionQty*: int
+
+
+proc getFillHistory*(db: DbConn, date: string, strategy: string, symbol: string): seq[FillHistoryEvent] =
+  var fills = newSeq[FillHistoryEvent]()
+  for row in db.rows(sql("""
+      SELECT
+        date,
+        symbol,
+        event_timestamp,
+        event_type,
+        client_order_id,
+        side,
+        raw_data -> 'data' -> 'qty' as event_fill_qty,
+        raw_data -> 'data' -> 'price' as event_fill_price,
+        raw_data -> 'data' -> 'order' -> 'filled_qty' as order_total_fill_qty,
+        raw_data -> 'data' -> 'position_qty' as position_qty
+      FROM ny.raw_order_updates
+      WHERE date = ?
+      AND symbol = ?
+      AND event_type in ('partial_fill', 'fill')
+      ORDER BY event_timestamp
+      """), date, symbol):
+    fills.add FillHistoryEvent(
+      date: row[0],
+      symbol: row[1],
+      eventTimestamp: row[2].parseTimestamp,
+      eventType: row[3],
+      clientOrderId: row[4],
+      side: row[5],
+      eventFillQty: row[6].parseInt,
+      eventFillPrice: row[7].parsePrice,
+      orderTotalFillQty: row[8].parseInt,
+      positionQty: row[9].parseInt,
+    )
+  return fills
