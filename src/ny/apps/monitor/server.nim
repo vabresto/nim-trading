@@ -14,7 +14,14 @@ proc indexHandler(request: Request) =
 
   var response = """
   <head>
+    <title>Nim Trading Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- borrow a nice icon to use as our own favicon -->
+    <link rel="icon" href="https://www.favicon.studio/favicon.ico">
+    <link rel="apple-touch-icon" href="https://www.favicon.studio/android-chrome-192x192.png">
+    <meta itemprop="image" content="https://www.favicon.studio/android-chrome-192x192.png">
+    <meta property="og:image" content="https://www.favicon.studio/android-chrome-192x192.png">
 
     <script src="https://unpkg.com/htmx.org@1.9.11" integrity="sha384-0gxUXCCR8yv9FM2b+U3FDbsKthCI66oH5IA9fHppQq9DDMHuMauqq1ZHBpJxQ0J0" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/htmx.org@1.9.11/dist/ext/ws.js"></script>
