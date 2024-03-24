@@ -1,3 +1,4 @@
+import std/json
 import std/strformat
 
 import chronicles
@@ -6,6 +7,7 @@ import mummy/routers
 
 import ny/apps/monitor/ws_manager
 import ny/apps/monitor/pages/overview
+import ny/apps/monitor/pages
 
 
 proc indexHandler(request: Request) =
@@ -51,7 +53,21 @@ proc websocketHandler(
   of MessageEvent:
     warn "Unexpectedly got message from client websocket", event, message
     echo message.kind, ": ", message.data
-    # TODO: We do want to start handling getting messages from clients
+    let parsed = message.data.parseJson
+
+    if "type" in parsed and parsed["type"].getStr == "change-page":
+      if "new-page" in parsed:
+        let manager = getWsManager()
+        case parsed["new-page"].getStr
+        of "overview":
+          manager.setState(websocket, WsClientState(kind: Overview))
+          manager.send(websocket, renderPage)
+        of "strategy-details":
+          manager.setState(websocket, WsClientState(kind: StrategyDetails))
+          manager.send(websocket, renderPage)
+        else:
+          error "Unknown page requested", page=parsed["new-page"].getStr
+          discard
   of ErrorEvent:
     error "Unexpectedly got error message from client websocket", event, message
   of CloseEvent:

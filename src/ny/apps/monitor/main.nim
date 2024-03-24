@@ -8,11 +8,8 @@ import std/sugar
 import chronicles
 import mummy
 
-import ny/apps/monitor/render_server_info
-import ny/apps/monitor/render_strategy_state
-import ny/apps/monitor/routes/server
+import ny/apps/monitor/server
 import ny/apps/monitor/sender
-import ny/apps/monitor/ws_manager
 import ny/core/env/envs
 import ny/core/inspector/server as inspector_server
 
@@ -40,8 +37,7 @@ proc main() =
 
   info "Serving ...", host=kHost, port=kPort
 
-  let senders: seq[WsSendRender] = @[getRenderNumConnectedClients(), getRenderStrategyStates()]
-  let senderThreadArgs = SenderThreadArgs(targets: targets, functions: senders)
+  let senderThreadArgs = SenderThreadArgs(targets: targets)
   createThread(senderThread, runSenderThread, senderThreadArgs)
   createThread(monitorThread, runMonitorServer)
   let server = makeServer()

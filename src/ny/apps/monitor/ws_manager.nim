@@ -64,10 +64,27 @@ proc numClients*(manager: WsManager): int =
     return manager[].websockets.len
 
 
+proc send*(manager: WsManager, client: WebSocket, f: WsSendRender) {.gcsafe, effectsOf: f, raises: [].} =
+  withRLock(manager[].lock):
+    try:
+      let resp = f(manager[].websockets[client])
+      if resp.isSome:
+        client.send(resp.get & "\n")
+    except KeyError:
+      error "Trying to set state for client that does not exist", client
+      return
+
+
 proc send*(manager: WsManager, f: WsSendRender) {.gcsafe, effectsOf: f, raises: [].} =
   withRLock(manager[].lock):
     for ws, state in manager[].websockets:
-      {.gcsafe.}:
-        let resp = f(state)
-      if resp.isSome:
-        ws.send(resp.get & "\n")
+      manager.send(ws, f)
+
+
+proc setState*(manager: WsManager, client: WebSocket, state: WsClientState) =
+  withRLock(manager[].lock):
+    if client notin manager[].websockets:
+      error "Trying to set state for client that does not exist", client
+      return
+
+    manager[].websockets[client] = state
