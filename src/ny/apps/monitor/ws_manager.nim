@@ -9,15 +9,18 @@ import mummy
 type
   WsClientStateKind* = enum
     Overview
+    StrategyList
     StrategyDetails
 
   WsClientState* = object
     case kind*: WsClientStateKind
     of Overview:
       discard
+    of StrategyList:
+      discard
     of StrategyDetails:
       strategy*: string
-      symbol*: Option[string]
+      symbol*: string
 
   WsManagerImpl = object
     lock: RLock

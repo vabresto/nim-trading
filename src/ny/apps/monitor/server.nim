@@ -26,8 +26,8 @@ proc indexHandler(request: Request) =
         
         <input type="radio" id="new-page-overview" name="new-page" value="overview">
         <label for="new-page-overview">Overview</label><br>
-        <input type="radio" id="new-page-strategy-details" name="new-page" value="strategy-details">
-        <label for="new-page-strategy-details">Strategy Details</label><br>
+        <input type="radio" id="new-page-strategy-list" name="new-page" value="strategy-list">
+        <label for="new-page-strategy-list">Strategy List</label><br>
 
         <button type="submit">Submit</button>
       </form>
@@ -53,7 +53,6 @@ proc websocketHandler(
   of OpenEvent:
     discard
   of MessageEvent:
-    warn "Unexpectedly got message from client websocket", event, message
     echo message.kind, ": ", message.data
     let parsed = message.data.parseJson
 
@@ -63,13 +62,15 @@ proc websocketHandler(
         case parsed["new-page"].getStr
         of "overview":
           manager.setState(websocket, WsClientState(kind: Overview))
-          manager.send(websocket, renderPage)
+        of "strategy-list":
+          manager.setState(websocket, WsClientState(kind: StrategyList))
         of "strategy-details":
           manager.setState(websocket, WsClientState(kind: StrategyDetails))
-          manager.send(websocket, renderPage)
         else:
           error "Unknown page requested", page=parsed["new-page"].getStr
-          discard
+          return
+
+        manager.send(websocket, renderPage)
   of ErrorEvent:
     error "Unexpectedly got error message from client websocket", event, message
   of CloseEvent:

@@ -6,6 +6,7 @@ import ny/apps/monitor/ws_manager
 
 import ny/apps/monitor/pages/overview
 import ny/apps/monitor/pages/strategy_details
+import ny/apps/monitor/pages/strategy_list
 
 
 proc renderPage*(state: WsClientState): Option[string] {.gcsafe, raises: [].} =
@@ -15,6 +16,12 @@ proc renderPage*(state: WsClientState): Option[string] {.gcsafe, raises: [].} =
       some renderOverviewPage(state)
     except ValueError:
       error "Failed to render overview page"
+      none[string]()
+  of StrategyList:
+    try:
+      some renderStrategyListPage(state)
+    except ValueError:
+      error "Failed to render strategy list page"
       none[string]()
   of StrategyDetails:
     try:

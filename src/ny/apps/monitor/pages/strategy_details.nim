@@ -15,11 +15,10 @@ import ny/apps/monitor/ws_manager
 proc renderStrategyStates*(state: WsClientState): string =
   {.gcsafe.}:
     let strategyStates = getStrategyStates()
-  fmt"""
-    <div id="strategy-states" hx-swap-oob="true">
-      {strategyStates}
-    </div>
-  """
+
+  result = """<div id="strategy-states" hx-swap-oob="true">"""
+  result &= $strategyStates
+  result &= "</div>"
 
 
 proc renderStrategyDetailsPage*(state: WsClientState): string =
