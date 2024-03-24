@@ -61,7 +61,6 @@ proc websocketHandler(
     discard
   of MessageEvent:
     try:
-      echo message.kind, ": ", message.data
       let parsed = message.data.parseJson
 
       if "type" in parsed and parsed["type"].getStr == "change-page":
