@@ -115,7 +115,7 @@ services:
 
   runner-strategy-dummy:
     image: project-ny
-    command: /ny/bin/ny-runner --heartbeat
+    command: /ny/bin/ny-runner --heartbeat --monitor-address monitor
     restart: always
     depends_on:
       - db
