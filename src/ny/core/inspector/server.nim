@@ -7,6 +7,7 @@ import std/tables
 
 import chronicles
 
+import ny/core/env/envs
 import ny/core/inspector/shared
 
 
@@ -19,6 +20,18 @@ gStrategyStatesLock.initRLock()
 proc getStrategyStates*(): lent Table[string, Table[string, JsonNode]] =
   withRLock(gStrategyStatesLock):
     return gStrategyStates
+
+
+proc dumpStrategyStates*() {.gcsafe.} =
+  let dumpFile = open(loadOrQuit("STRATEGY_DUMP_FILE"), fmWrite)
+  defer: dumpFile.close()
+
+  var strategyDump = newJObject()
+  withRLock(gStrategyStatesLock):
+    {.gcsafe.}:
+      strategyDump = %* gStrategyStates
+
+  dumpFile.write(strategyDump.pretty)
 
 
 const kPerPeerLogFrequency = 10
@@ -59,6 +72,8 @@ proc handleClient(client: AsyncSocket) {.async, gcsafe.} =
             if strategyId notin gStrategyStates:
               gStrategyStates[strategyId] = initTable[string, JsonNode]()
             gStrategyStates[strategyId][symbol] = parsed
+
+        dumpStrategyStates()
 
       except JsonParsingError:
         error "Failed to parse strategy state message from client", msgFromclient
