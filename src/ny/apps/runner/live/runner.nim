@@ -1,5 +1,6 @@
 import std/net
 import std/options
+import std/os
 import std/json
 
 import chronicles
@@ -26,7 +27,21 @@ type
 
 proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
   dynamicLogScope(symbol=args.symbol):
-    let monSock = getMonitorSocket(args.monitorAddress, args.monitorPort)
+    let monSock = block:
+      var retriesLeft = 5
+      var monSock = getMonitorSocket(args.monitorAddress, args.monitorPort)
+      while retriesLeft > 0:
+        dec retriesLeft
+        if monSock.isSome:
+          break
+        if retriesLeft <= 0:
+          break
+        if monSock.isNone and args.monitorAddress.isSome and args.monitorPort.isSome:
+          # Retry
+          info "Retrying to connect to monitoring socket ...", retriesLeft
+        sleep(5_000)
+        monSock = getMonitorSocket(args.monitorAddress, args.monitorPort)
+      monSock
     let oc = getTheOutputChannel()
     let ic = block:
       try:
