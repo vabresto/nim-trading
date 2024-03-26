@@ -288,7 +288,7 @@ proc renderStrategyStates*(state: WsClientState): string =
           <tr>
             <td>{item.date}</td>
             <td>{item.symbol}</td>
-            <td>{item.eventTimestamp.toDatetime.format("hh:mm:ss.fff")}</td>
+            <td>{item.eventTimestamp.toDatetime.format("hh:mm:ss'.'fff")}</td>
             <td>{item.eventType}</td>
             <td>{item.clientOrderId}</td>
             <td>{item.side}</td>
