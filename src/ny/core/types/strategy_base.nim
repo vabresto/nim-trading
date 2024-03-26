@@ -177,11 +177,18 @@ func makeOrderId*(state: var StrategyBase): ClientOrderId =
   (state.orderIdBase & "dummy:o-" & $state.numOrdersSent).ClientOrderId
 
 
-func calculateTotalFees*(state: var StrategyBase): tuple[regFee: Price, tafFee: Price] =
+func calcRegFee*(notionalSold: Price): Price =
+  ((ceil(notionalSold.inCents.float * (8 / 1_000_000))) / 100).parsePrice
+
+
+func calcTafFee*(sharesSold: int): Price =
+  (sharesSold / 1_000_000 * 166).parsePrice
+
+func calculateTotalFees*(state: StrategyBase): tuple[regFee: Price, tafFee: Price] =
   # https://alpaca.markets/blog/reg-taf-fees/
-  let regFee = ceil(state.stratTotalNotionalSold.inCents.float * (8 / 1_000_000))
-  let tafFee = state.stratTotalSharesSold / 1_000_000 * 166
-  ((regFee/100).parsePrice, tafFee.parsePrice)
+  let regFee = state.stratTotalNotionalSold.calcRegFee
+  let tafFee = state.stratTotalSharesSold.calcTafFee
+  (regFee, tafFee)
 
 
 func calcOpenSellInterest*(self: StrategyBase): int =

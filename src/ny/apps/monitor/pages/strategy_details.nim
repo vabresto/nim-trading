@@ -12,6 +12,7 @@ import ny/core/types/price
 import ny/core/types/timestamp
 import ny/core/db/mddb
 import ny/core/env/envs
+import ny/core/types/strategy_base
 
 
 var gStrategyDetailsDb = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
@@ -40,6 +41,13 @@ proc renderStrategyStates*(state: WsClientState): string =
   else:
     "red"
 
+  let regFee = details["base"]["stratTotalNotionalSold"].getPrice.calcRegFee
+  let tafFee = details["base"]["stratTotalSharesSold"].getInt.calcTafFee
+  let feesColour = if regFee == Price(dollars: 0, cents: 0) and tafFee == Price(dollars: 0, cents: 0):
+    "green"
+  else:
+    "red"
+
   result = fmt"""
   <div id="strategy-states" hx-swap-oob="true">
     <section>
@@ -64,6 +72,10 @@ proc renderStrategyStates*(state: WsClientState): string =
           <tr><td>Position</td><td>{details["base"]["position"].getInt}</td></tr>
           <tr><td>Position VWAP</td><td>${details["base"]["positionVwap"].getFloat}</td></tr>
           <tr><td>Strategy PnL</td><td style="color: {pnlColour};">${pnl}</td></tr>
+          <tr>
+            <td>Trading Fees</td>
+            <td><strong>Regulatory Fees:</strong> <span style="color: {feesColour};">${regFee}</span><br><strong>TAF Fee:</strong> <span style="color: {feesColour};">${tafFee}</span></td>
+          </tr>
 
           <tr>
             <td>NBBO</td>
