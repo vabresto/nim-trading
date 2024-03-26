@@ -234,10 +234,10 @@ proc renderStrategyStates*(state: WsClientState): string =
       """
     else:
       result &= fmt"""
-        <strong>Open:</strong> {details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
-        <strong>High:</strong> {details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
-        <strong>Low:</strong> {details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
-        <strong>Close:</strong> {details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
+        <strong>Open:</strong> ${details["strategy"]["lastBar"]["openPrice"].getPrice} <br>
+        <strong>High:</strong> ${details["strategy"]["lastBar"]["highPrice"].getPrice} <br>
+        <strong>Low:</strong> ${details["strategy"]["lastBar"]["lowPrice"].getPrice} <br>
+        <strong>Close:</strong> ${details["strategy"]["lastBar"]["closePrice"].getPrice} <br>
         <strong>Volume:</strong> {details["strategy"]["lastBar"]["volume"].getInt} <br>
         <strong>Timestamp:</strong> {details["strategy"]["lastBar"]["timestamp"].getTimestamp.friendlyString}
       """
@@ -293,7 +293,7 @@ proc renderStrategyStates*(state: WsClientState): string =
             <td>{item.clientOrderId}</td>
             <td>{item.side}</td>
             <td>{item.eventFillQty}</td>
-            <td>{item.eventFillPrice}</td>
+            <td>${item.eventFillPrice}</td>
             <td>{item.orderTotalFillQty}</td>
             <td>{item.positionQty}</td>
           </tr>
