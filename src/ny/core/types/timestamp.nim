@@ -86,7 +86,9 @@ proc parseTimestamp*(s: string): Timestamp {.noSideEffect, raises: [].} =
         var nanosPart = splitted[1]
 
         if nanosPart[^1] != 'Z':
-          return #error
+          {.noSideEffect.}:
+            error "No timezone component?", s
+          return Timestamp(epoch: -1, nanos: 0)
 
         # 9 digits ns, plus one for 'Z'
         while nanosPart.len < 10:
@@ -99,4 +101,32 @@ proc parseTimestamp*(s: string): Timestamp {.noSideEffect, raises: [].} =
   except TimeParseError:
     {.noSideEffect.}:
       error "Failed to parse timestamp!", s
+    Timestamp(epoch: -1, nanos: 0)
+
+
+proc parseDbTimestamp*(s: string): Timestamp {.noSideEffect, raises: [].} =
+  try:
+    let splitted = s.split(".")
+    let epochPart = splitted[0]
+    var (nanosTzSplitted, tzSplitter) = if "+" in splitted[1]:
+      (splitted[1].split("+"), "+")
+    elif "-" in splitted[1]:
+      (splitted[1].split("-"), "-")
+    else:
+      {.noSideEffect.}:
+        error "No timezone component from db?", s
+      return Timestamp(epoch: -1, nanos: 0)
+
+    var nanosPart = nanosTzSplitted[0]
+    let tzPart = nanosTzSplitted[1]
+
+    while nanosPart.len < 6:
+      nanosPart.add '0'
+
+    {.noSideEffect.}:
+      let dt = parse(epochPart & "." & nanosPart & tzSplitter & tzPart, "yyyy-MM-dd' 'hh:mm:ss'.'ffffffzz")
+    Timestamp(epoch: dt.toTime.toUnix, nanos: dt.nanosecond)
+  except TimeParseError:
+    {.noSideEffect.}:
+      error "Failed to parse db timestamp!", s
     Timestamp(epoch: -1, nanos: 0)

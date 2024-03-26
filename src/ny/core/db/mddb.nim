@@ -216,10 +216,10 @@ proc getFillHistory*(db: DbConn, date: string, strategy: string, symbol: string)
         event_type,
         client_order_id,
         side,
-        raw_data -> 'data' -> 'qty' as event_fill_qty,
-        raw_data -> 'data' -> 'price' as event_fill_price,
-        raw_data -> 'data' -> 'order' -> 'filled_qty' as order_total_fill_qty,
-        raw_data -> 'data' -> 'position_qty' as position_qty
+        raw_data -> 'data' ->> 'qty' as event_fill_qty,
+        raw_data -> 'data' ->> 'price' as event_fill_price,
+        raw_data -> 'data' -> 'order' ->> 'filled_qty' as order_total_fill_qty,
+        raw_data -> 'data' ->> 'position_qty' as position_qty
       FROM ny.raw_order_updates
       WHERE date = ?
       AND symbol = ?
@@ -229,7 +229,7 @@ proc getFillHistory*(db: DbConn, date: string, strategy: string, symbol: string)
     fills.add FillHistoryEvent(
       date: row[0],
       symbol: row[1],
-      eventTimestamp: row[2].parseTimestamp,
+      eventTimestamp: row[2].parseDbTimestamp,
       eventType: row[3],
       clientOrderId: row[4],
       side: row[5],
