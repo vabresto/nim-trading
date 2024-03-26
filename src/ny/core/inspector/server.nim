@@ -2,24 +2,48 @@ import std/asyncdispatch
 import std/asyncnet
 import std/json
 import std/net
+import std/os
 import std/rlocks
+import std/strutils
 import std/tables
 
-import chronicles
+import chronicles except toJson
 
 import ny/core/env/envs
 import ny/core/inspector/shared
 
 
+type
+  StrategyStatesObj = Table[string, Table[string, Table[string, JsonNode]]]
+
 var gStrategyStatesLock: RLock
-# Strategy -> Symbol -> JsonNode
-var gStrategyStates {.guard: gStrategyStatesLock.} = initTable[string, Table[string, JsonNode]]()
+# Date -> Strategy -> Symbol -> JsonNode
+var gStrategyStates {.guard: gStrategyStatesLock.}: StrategyStatesObj = initTable[string, Table[string, Table[string, JsonNode]]]()
 gStrategyStatesLock.initRLock()
 
 
-proc getStrategyStates*(): lent Table[string, Table[string, JsonNode]] =
+proc getStrategyStates*(): lent StrategyStatesObj =
   withRLock(gStrategyStatesLock):
     return gStrategyStates
+
+
+proc loadStrategyStates() =
+  let dumpFilePath = loadOrQuit("STRATEGY_DUMP_FILE")
+  if not dumpFilePath.fileExists:
+    info "No strategy dump file found; starting fresh"
+    return
+
+  info "Loading strategy states from saved file", dumpFilePath
+  let dumpFile = open(dumpFilePath, fmRead)
+  defer: dumpFile.close()
+
+  let rawData = dumpFile.readAll.strip
+  if rawData.len == 0:
+    return
+  
+  withRLock(gStrategyStatesLock):
+    {.gcsafe.}:
+      gStrategyStates = rawData.parseJson.to(StrategyStatesObj)
 
 
 proc dumpStrategyStates*() {.gcsafe.} =
@@ -65,20 +89,23 @@ proc handleClient(client: AsyncSocket) {.async, gcsafe.} =
       try:
         let parsed = msgFromclient.parseJson
         let symbol = parsed["symbol"].getStr
+        let dateStr = parsed["date"].getStr
         let strategyId = parsed["base"]["strategyId"].getStr
 
         withRLock(gStrategyStatesLock):
           {.gcsafe.}:
-            if strategyId notin gStrategyStates:
-              gStrategyStates[strategyId] = initTable[string, JsonNode]()
-            gStrategyStates[strategyId][symbol] = parsed
+            if dateStr notin gStrategyStates:
+              gStrategyStates[dateStr] = initTable[string, Table[string, JsonNode]]()
+            if strategyId notin gStrategyStates[dateStr]:
+              gStrategyStates[dateStr][strategyId] = initTable[string, JsonNode]()
+            gStrategyStates[dateStr][strategyId][symbol] = parsed
 
         dumpStrategyStates()
 
       except JsonParsingError:
-        error "Failed to parse strategy state message from client", msgFromclient
+        error "Failed to parse strategy state message from client", msgFromclient, msg=getCurrentExceptionMsg()
       except KeyError:
-        error "Failed to lookup expected key from client message", msgFromclient
+        error "Failed to lookup expected key from client message", msgFromclient, msg=getCurrentExceptionMsg()
 
     except Exception:
       error "handleClient got unhandled generic exception", msg=getCurrentExceptionMsg()
@@ -96,6 +123,8 @@ proc serve() {.async, gcsafe .} =
 
 
 proc runMonitorServer*() {.gcsafe.} =
+  loadStrategyStates()
+
   asyncCheck serve()
   runForever()
 

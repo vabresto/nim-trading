@@ -33,7 +33,7 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
         {.gcsafe.}:
           getChannelForSymbol(args.symbol)
       except KeyError:
-        error "Failed to initialize runner; quitting", args
+        error "Failed to initialize runner; quitting", args, err=getCurrentExceptionMsg()
         return
 
     let dateStr = getNowUtc().getDateStr()
@@ -53,10 +53,10 @@ proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
           strategy.handleOutputEvent(resp)
           oc.send(OutputEventMsg(symbol: args.symbol, event: resp))
         except Exception:
-          error "Failed to send request!", resp
+          error "Failed to send request!", resp, err=getCurrentExceptionMsg()
 
       if resps.len > 0 and monSock.isSome:
         try:
-          initPushMessage(base = strategy, strategy = %*strategy, symbol = args.symbol).pushStrategyState(monSock.get)
+          initPushMessage(base = strategy, strategy = %*strategy, date = dateStr, symbol = args.symbol).pushStrategyState(monSock.get)
         except OSError, SslError:
-          error "Failed to push strategy state update message to monitoring socket"
+          error "Failed to push strategy state update message to monitoring socket", err=getCurrentExceptionMsg()

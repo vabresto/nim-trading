@@ -21,6 +21,7 @@ type
     of StrategyDetails:
       strategy*: string
       symbol*: string
+      date*: string
 
   WsManagerImpl = object
     lock: RLock
@@ -74,7 +75,7 @@ proc send*(manager: WsManager, client: WebSocket, f: WsSendRender) {.gcsafe, eff
       if resp.isSome:
         client.send(resp.get & "\n")
     except KeyError:
-      error "Trying to set state for client that does not exist", client
+      error "Trying to set state for client that does not exist", client, err=getCurrentExceptionMsg()
       return
 
 

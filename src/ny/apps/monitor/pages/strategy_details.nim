@@ -31,7 +31,8 @@ proc renderStrategyStates*(state: WsClientState): string =
 
   let strategy = state.strategy
   let symbol = state.symbol
-  let details = strategyStates[strategy][symbol]
+  let date = state.date
+  let details = strategyStates[date][strategy][symbol]
 
   let pnl = details["base"]["stratPnl"].getPrice
   let pnlColour = if pnl >= Price(dollars: 0, cents: 0):
@@ -293,7 +294,7 @@ proc renderStrategyStates*(state: WsClientState): string =
       </section>
       """
     except DbError:
-      error "Failed to get fill history"
+      error "Failed to get fill history", err=getCurrentExceptionMsg()
       result &= """<p style="color: red;">Failed to get fill history</p>"""
 
   result &= "</div>"

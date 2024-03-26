@@ -21,6 +21,7 @@ type
   PushMessage* = object
     base: StrategyBase
     strategy: JsonNode
+    date: string
     symbol: string
     isSim: bool
     timestamp: Timestamp
@@ -37,12 +38,12 @@ proc getMonitorSocket*(monitorAddress: Option[string], monitorPort: Option[Port]
       debug "No monitoring socket requested; non created", monitorAddress, monitorPort
       none[Socket]()
   except OSError, SslError:
-    error "Failed to create monitor socket"
+    error "Failed to create monitor socket", err=getCurrentExceptionMsg()
     none[Socket]()
 
 
-proc initPushMessage*(base: StrategyBase, strategy: JsonNode, symbol: string): PushMessage =
-  PushMessage(base: base, strategy: strategy, symbol: symbol, isSim: isSimuluation(), timestamp: getNowUtc())
+proc initPushMessage*(base: StrategyBase, date: string, strategy: JsonNode, symbol: string): PushMessage =
+  PushMessage(base: base, strategy: strategy, date: date, symbol: symbol, isSim: isSimuluation(), timestamp: getNowUtc())
 
 
 proc pushStrategyState*(msg: PushMessage, socket: Socket) =

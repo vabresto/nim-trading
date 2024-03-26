@@ -27,6 +27,7 @@ type
   Simulator* = object
     db*: DbConn
 
+    date: string
     symbol: string
 
     curTime: float
@@ -72,6 +73,7 @@ proc initSimulator*(date: Datetime, symbol: string, monitorAddress: Option[strin
 
   Simulator(
     db: db,
+    date: date.format("yyyy-MM-dd"),
     symbol: symbol,
     curTime: 0.float,
     timers: initHeapQueue[TimerEvent](),
@@ -210,4 +212,4 @@ proc simulate*(sim: var Simulator) =
           error "Requested command failed from matchingEngine.onRequest", event=resp
 
     if cmds.len > 0 and sim.monitorSocket.isSome:
-      initPushMessage(base = strategy, strategy = %*strategy, symbol = sim.symbol).pushStrategyState(sim.monitorSocket.get)
+      initPushMessage(base = strategy, strategy = %*strategy, date = sim.date, symbol = sim.symbol).pushStrategyState(sim.monitorSocket.get)

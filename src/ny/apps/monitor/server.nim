@@ -79,9 +79,9 @@ proc websocketHandler(
           of "strategy-list":
             manager.setState(websocket, WsClientState(kind: StrategyList))
           of "strategy-details":
-            manager.setState(websocket, WsClientState(kind: StrategyDetails, symbol: parsed["symbol"].getStr, strategy: parsed["strategy"].getStr))
+            manager.setState(websocket, WsClientState(kind: StrategyDetails, symbol: parsed["symbol"].getStr, strategy: parsed["strategy"].getStr, date: parsed["date"].getStr))
           else:
-            error "Unknown page requested", page=parsed["new-page"].getStr
+            error "Unknown page requested", page=parsed["new-page"].getStr, err=getCurrentExceptionMsg()
             return
 
           manager.send(websocket, renderPage)

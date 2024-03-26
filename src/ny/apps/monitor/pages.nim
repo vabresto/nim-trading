@@ -15,17 +15,17 @@ proc renderPage*(state: WsClientState): Option[string] {.gcsafe, raises: [].} =
     try:
       some renderOverviewPage(state)
     except ValueError:
-      error "Failed to render overview page"
+      error "Failed to render overview page", err=getCurrentExceptionMsg()
       none[string]()
   of StrategyList:
     try:
       some renderStrategyListPage(state)
     except ValueError:
-      error "Failed to render strategy list page"
+      error "Failed to render strategy list page", err=getCurrentExceptionMsg()
       none[string]()
   of StrategyDetails:
     try:
       some renderStrategyDetailsPage(state)
     except ValueError:
-      error "Failed to render strategy details page"
+      error "Failed to render strategy details page", err=getCurrentExceptionMsg()
       none[string]()
