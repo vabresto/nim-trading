@@ -267,7 +267,7 @@ proc renderStrategyStates*(state: WsClientState): string =
       if fills.len == 0:
         result &= """
           <tr>
-            <td colspan="9" style="text-align: center;">No Fill History</td>
+            <td colspan="10" style="text-align: center;">No Fill History</td>
           </tr>
         """
 
