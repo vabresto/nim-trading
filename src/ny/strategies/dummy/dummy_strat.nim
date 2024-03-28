@@ -6,7 +6,8 @@
 ## Maybe consider having a close position at end of day state
 
 import std/options
-import std/strutils
+import std/sets
+# import std/strutils
 import std/tables
 import std/times
 
@@ -15,6 +16,7 @@ import chronicles
 
 import ny/core/md/md_types
 import ny/core/types/md/bar_details
+import ny/core/types/nbbo
 import ny/core/types/price
 import ny/core/types/strategy_base
 import ny/core/types/timestamp
@@ -39,6 +41,8 @@ type
     state: StateKind = WaitingForMomentum
     sentEodTimer: bool = false
     numConsecIncreases: int = 0
+    numRetries: int = 0
+    lastNbbo: Option[Nbbo]
     lastBar: Option[BarDetails]
 
 
@@ -47,16 +51,17 @@ func initDummyStrategy*(strategyId: string, orderIdBase: string): DummyStrategyS
 
 
 func closeAllOpenOrders(state: var DummyStrategyState): seq[OutputEvent] {.raises: [].} =
-  for id in state.openOrders.keys:
-    result &= OutputEvent(kind: OrderCancel, idToCancel: id)
-    {.noSideEffect.}:
-      debug "Sending order cancel event", id
+  for id, order in state.openOrders:
+    if not order.done:
+      result &= OutputEvent(kind: OrderCancel, idToCancel: id)
+      {.noSideEffect.}:
+        debug "Sending order cancel event", id
 
 
 func tryEnterPosition(state: var DummyStrategyState, price: Price): seq[OutputEvent] {.raises: [].} =
   result &= @[
     OutputEvent(kind: OrderSend, clientOrderId: state.makeOrderId, side: Buy, quantity: 100, price: price, orderKind: Limit, tif: Day),
-    OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for fill expired; restart"))
+    OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=120), tags: ["RESET-STATE"].toHashSet, name: "Waiting for fill expired; restart"))
   ]
 
 
@@ -65,19 +70,21 @@ func getIdealExitPrice(self: var DummyStrategyState): Price =
 
 
 func getPessimisticExitPrice(self: var DummyStrategyState): Price = 
-  Price(dollars: 0, cents: 0)
+  if self.lastNbbo.isSome:
+    self.lastNbbo.get.askPrice - Price(dollars: 0, cents: 1)
+  else:
+    Price(dollars: 0, cents: 0)
 
 
 func tryExitPosition(self: var DummyStrategyState, price: Price): seq[OutputEvent] {.raises: [].} =
   if self.pendingOrders.len == 0 and self.numOpenOrders == 0:
     result &= @[
       OutputEvent(kind: OrderSend, clientOrderId: self.makeOrderId, side: Sell, quantity: self.position, price: price, orderKind: Limit, tif: Day),
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(seconds=120), name: "[RESET-STATE] Waiting for exit expired; try again")),
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(seconds=120), tags: ["RESET-STATE"].toHashSet, name: "Waiting for exit expired; try again")),
     ]
   else:
-    result &= self.closeAllOpenOrders()
     result &= @[
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(milliseconds=10), name: "[RESET-STATE][CLOSE] Trying to exit but had open orders; try again")),
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(milliseconds=10), tags: ["CLOSE", "RESET-STATE"].toHashSet, name: "Trying to exit but had open orders; try again")),
     ]
 
 
@@ -87,9 +94,8 @@ func marketExitPosition(self: var DummyStrategyState): seq[OutputEvent] {.raises
       OutputEvent(kind: OrderSend, clientOrderId: self.makeOrderId, side: Sell, quantity: self.position, orderKind: Market, tif: ClosingAuction),
     ]
   else:
-    result &= self.closeAllOpenOrders()
     result &= @[
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(milliseconds=10), name: "[RESET-STATE][CLOSE] Trying to market exit but had open orders; try again")),
+      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: self.curTime + initDuration(milliseconds=10), tags: ["CLOSE", "RESET-STATE"].toHashSet, name: "Trying to market exit but had open orders; try again")),
     ]
 
 
@@ -98,13 +104,13 @@ func goToState(self: var DummyStrategyState, state: StateKind): seq[OutputEvent]
   of WaitingForMomentum:
     if self.state == ExitingPositionOptimistic or self.state == ExitingPositionPessimistic:
       {.noSideEffect.}:
-        info "Fully exited position, going to WaitingForMomentum"
+        info "Fully exited position, going to WaitingForMomentum", pending=self.pendingOrders, opened=self.openOrders
     self.state = WaitingForMomentum
     self.numConsecIncreases = 0
   
   of WaitingForFill:
     {.noSideEffect.}:
-      info "Strategy got 3rd consec increase", stratPnl=self.stratPnl
+      info "Strategy got 3rd consec increase", stratPnl=self.stratPnl, pending=self.pendingOrders, opened=self.openOrders
     self.numConsecIncreases = 0
     self.state = WaitingForFill
   
@@ -114,12 +120,12 @@ func goToState(self: var DummyStrategyState, state: StateKind): seq[OutputEvent]
   of ExitingPositionPessimistic:
     if self.state != ExitingPositionOptimistic:
       {.noSideEffect.}:
-        warn "Going to pessimistic exit but not in optimistic exit state", curState=self.state
+        warn "Going to pessimistic exit but not in optimistic exit state", curState=self.state, pending=self.pendingOrders, opened=self.openOrders
     self.state = ExitingPositionPessimistic
   
   of EodClose:
     {.noSideEffect.}:
-      info "Got EOD close message from timer", curState=self.state, position=self.position, posVwap=self.positionVwap, posMktValue=self.calcPositionMktPrice(), stratPnl=self.stratPnl, fees=self.calculateTotalFees
+      info "Going to EOD close state", curState=self.state, position=self.position, posVwap=self.positionVwap, posMktValue=self.calcPositionMktPrice(), stratPnl=self.stratPnl, fees=self.calculateTotalFees, pending=self.pendingOrders, opened=self.openOrders
     self.state = EodClose
   of EodDone:
     discard
@@ -136,12 +142,8 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
         # Note: doesn't handle DST or early closes
         # Note: can't send MOC orders after 3:55 apparently
         timestamp: (state.curTime.toDateTime.format("yyyy-MM-dd") & "T19:54:45.000000000Z").parseTimestamp,
-        name: "[EOD-CLOSE] Closing out position to end the day flat")),
-
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=15), name: "Sending 15 sec timer")),
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=5), name: "Sending 5 sec timer")),
-      OutputEvent(kind: Timer, timer: TimerEvent(timestamp: state.curTime + initDuration(seconds=10), name: "Sending 10 sec timer")),
-      
+        tags: ["EOD-CLOSE"].toHashSet,
+        name: "Closing out position to end the day flat")),
     ]
 
   # Consider using fusion pattern matching, and split on (State, EventKind)
@@ -152,25 +154,28 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
     {.noSideEffect.}:
       info "Got timer", timer=update.timer
 
-    if "[EOD-CLOSE]" in update.timer.name:
-      result &= state.goToState(EodClose)
-
     if state.state == EodDone:
       return
 
-    if "[RESET-STATE]" in update.timer.name:
+    if "EOD-CLOSE" in update.timer.tags and state.state != EodClose:
+      result &= state.closeAllOpenOrders()
+      result &= state.goToState(EodClose)
+
+      if state.position > 0:
+        result &= state.marketExitPosition()
+      return
+
+    if "RESET-STATE" in update.timer.tags:
       {.noSideEffect.}:
-        info "Got reset state message from timer", curState=state.state, position=state.position, posVwap=state.positionVwap, posMktValue=state.calcPositionMktPrice(), stratPnl=state.stratPnl, fees=state.calculateTotalFees
+        info "Got reset state message from timer", curState=state.state, position=state.position, posVwap=state.positionVwap, posMktValue=state.calcPositionMktPrice(), stratPnl=state.stratPnl, fees=state.calculateTotalFees, pending=state.pendingOrders, opened=state.openOrders
 
       result &= state.closeAllOpenOrders()
       case state.state
-      of WaitingForMomentum, EodDone:
-        discard
       of ExitingPositionOptimistic, ExitingPositionPessimistic:
         if state.position > 0:
-          if (state.state == ExitingPositionOptimistic or state.state == ExitingPositionPessimistic) and "[CLOSE]" notin update.timer.name:
+          if state.state == ExitingPositionOptimistic:
             result &= state.goToState(ExitingPositionPessimistic)
-            result &= state.tryExitPosition(state.getPessimisticExitPrice())
+            result &= state.tryExitPosition(state.getPessimisticExitPrice)
             return
           else:
             result &= state.goToState(ExitingPositionOptimistic)
@@ -178,43 +183,90 @@ func executeDummyStrategy*(state: var DummyStrategyState, update: InputEvent): s
             return
         else:
           result &= state.goToState(WaitingForMomentum)
-      of WaitingForFill:
+      of WaitingForMomentum, WaitingForFill, EodClose, EodDone:
         discard
-      of EodClose:
-        if state.position == 0:
-          result &= state.goToState(EodDone)
-        result &= state.marketExitPosition()
 
 
   of MarketData:
+    if update.md.kind == Quote:
+      state.lastNbbo = some Nbbo(
+        askPrice: update.md.askPrice,
+        bidPrice: update.md.bidPrice,
+        askSize: update.md.askSize,
+        bidSize: update.md.bidSize,
+        timestamp: update.md.timestamp,
+      )
+
     case state.state
     of WaitingForMomentum:
-      if update.kind == MarketData and update.md.kind == BarMinute:
+      if update.md.kind == BarMinute:
         let newBar = update.md.bar
         if state.lastBar.isSome and newBar.lowPrice >= state.lastBar.get.lowPrice:
           inc state.numConsecIncreases
         state.lastBar = some newBar
 
         if state.numConsecIncreases > kNumRequiredBarIncreases:
+          state.numConsecIncreases = 0
           result &= state.goToState(WaitingForFill)
           result &= state.tryEnterPosition(newBar.highPrice - Price(dollars: 0, cents: kCentsEnterDiscount))
           return
 
-    of ExitingPositionOptimistic, ExitingPositionPessimistic, EodClose, WaitingForFill, EodDone:
+    of ExitingPositionOptimistic, ExitingPositionPessimistic, WaitingForFill, EodClose, EodDone:
       discard
 
 
   of OrderUpdate:
     case update.ou.kind
+    of New:
+      state.numRetries = 0
     of FilledFull:
       if state.state != EodDone and state.state != EodClose:
-        result &= state.goToState(ExitingPositionOptimistic)
-        result &= state.tryExitPosition(state.getIdealExitPrice)
+        if state.position > 0:
+          result &= state.goToState(ExitingPositionOptimistic)
+          result &= state.tryExitPosition(state.getIdealExitPrice)
+        else:
+          # Just exited position, restart the cycle
+          result &= state.goToState(WaitingForMomentum)
         return
     else:
       discard
 
 
   of CommandFailed:
-    {.noSideEffect.}:
-      error "Command failed", cmd=update.cmd
+    case update.cmd.kind
+    of OrderSendFailed:
+      {.noSideEffect.}:
+        warn "Order send failed", cmd=update.cmd
+      # Fallback or retry logic for failed order send
+      try:
+        let retryOrder = state.pendingOrders[update.cmd.clientOrderId]
+        if state.numRetries < 3:
+          inc state.numRetries
+          result.add OutputEvent(kind: OrderSend, clientOrderId: state.makeOrderId(),
+                                  side: retryOrder.side, quantity: retryOrder.size,
+                                  price: retryOrder.price, orderKind: retryOrder.kind, tif: retryOrder.tif)
+        else:
+          {.noSideEffect.}:
+            warn "Max order send retries reached, not retrying", orderId=update.cmd.clientOrderId, pending=state.pendingOrders, opened=state.openOrders
+          result &= state.goToState(WaitingForMomentum)
+          state.numRetries = 0
+      except KeyError:
+        {.noSideEffect.}:
+          error "Unable to find failed order in pending orders list", clientId=update.cmd.clientOrderId, pending=state.pendingOrders, opened=state.openOrders
+        result &= state.goToState(WaitingForMomentum)
+        return
+
+    of OrderCancelFailed:
+      {.noSideEffect.}:
+        warn "Order cancel failed", orderId=update.cmd.idToCancel, pending=state.pendingOrders, opened=state.openOrders
+      # Retry logic for failed order cancel
+      # This example does not implement a retry count check for cancel failures
+      # but it's recommended to include such a mechanism to avoid potential infinite loops
+      if state.numRetries < 3:
+        inc state.numRetries
+        result.add OutputEvent(kind: OrderCancel, idToCancel: update.cmd.idToCancel)
+      else:
+        {.noSideEffect.}:
+          warn "Max order cancel retries reached, not retrying", orderId=update.cmd.clientOrderId, pending=state.pendingOrders, opened=state.openOrders
+        result &= state.goToState(WaitingForMomentum)
+        state.numRetries = 0

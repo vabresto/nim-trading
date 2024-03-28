@@ -146,6 +146,7 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
     let orderLookup = me.book.getOrder(msg.clientOrderId.string)
     if orderLookup.isSome:
       error "Reject due to duplicated client order id", clientId=msg.clientOrderId
+      result &= InputEvent(kind: CommandFailed, cmd: FailedCommand(kind: OrderSendFailed, clientOrderId: msg.clientOrderId))
       return
 
     let exchId = ("sim:o:" & $me.orderCount).OrderId
@@ -181,8 +182,9 @@ proc onRequest*(me: var SimMatchingEngine, msg: OutputEvent): seq[InputEvent] =
       result.add InputEvent(kind: OrderUpdate, ou: SysOrderUpdateEvent(
         orderId: msg.idToCancel,
         clientOrderId: order.get.clientOrderId,
-        timestamp: me.curTime + me.makeDelay() + me.makeJitter(),
+        timestamp: me.curTime + me.makeJitter(),
         kind: Cancelled,
       ))
     else:
-      warn "Tried to cancel order that doesn't exist", id=msg.idToCancel
+      warn "Tried to cancel order that doesn't exist", id=msg.idToCancel, book=me.book
+      result.add InputEvent(kind: CommandFailed, cmd: FailedCommand(kind: OrderCancelFailed, idToCancel: msg.idToCancel))

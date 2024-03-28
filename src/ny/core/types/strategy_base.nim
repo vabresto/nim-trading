@@ -1,4 +1,5 @@
 import std/math
+import std/sets
 import std/tables
 
 import chronicles
@@ -52,6 +53,7 @@ type
   TimerEvent* = object
     timestamp*: Timestamp
     name*: string
+    tags*: HashSet[string]
 
   SysOrderUpdateKind* = enum
     Ack

@@ -167,6 +167,12 @@ proc simulate*(sim: var Simulator) =
 
   info "Running sim ..."
   for msg in eventItr(sim):
+
+    if sim.curTime > msg.timestamp.toTime.toUnixFloat:
+      warn "Simulator got event in the past ?!", simTime=sim.curTime, evtTime=msg.timestamp, msg
+      continue
+    sim.curTime = msg.timestamp.toTime.toUnixFloat
+
     case msg.kind
     of MarketData:
       case msg.md.kind
@@ -198,6 +204,7 @@ proc simulate*(sim: var Simulator) =
     let cmds = strategy.executeDummyStrategy(msg)
     strategy.pruneDoneOrders()
     for cmd in cmds:
+      info "Strategy sent command", cmd
       strategy.handleOutputEvent(cmd)
       let resps = matchingEngine.onRequest(cmd)
       for resp in resps:
