@@ -290,6 +290,7 @@ proc handleInputEvent*(state: var StrategyBase, update: InputEvent) =
         askSize: update.md.askSize,
         bidPrice: update.md.bidPrice,
         bidSize: update.md.bidSize,
+        timestamp: update.md.timestamp,
       )
     of BarMinute, Status:
       discard
