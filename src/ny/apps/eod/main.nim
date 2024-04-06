@@ -125,15 +125,15 @@ proc main() {.raises: [].} =
                     COALESCE(AVG(network_time_sec), 0) AS avg_network_time_sec,
                     COALESCE(AVG(internal_time_sec), 0) AS avg_internal_time_sec,
                     COALESCE(AVG(total_time_sec), 0) AS avg_total_time_sec,
-                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY network_time_sec) AS p50_network_time_sec,
-                    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY network_time_sec) AS p75_network_time_sec,
-                    PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY network_time_sec) AS p99_network_time_sec,
-                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY internal_time_sec) AS p50_internal_time_sec,
-                    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY internal_time_sec) AS p75_internal_time_sec,
-                    PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY internal_time_sec) AS p99_internal_time_sec,
-                    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY total_time_sec) AS p50_total_time_sec,
-                    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY total_time_sec) AS p75_total_time_sec,
-                    PERCENTILE_CONT(0.99) WITHIN GROUP (ORDER BY total_time_sec) AS p99_total_time_sec
+                    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY network_time_sec) AS p50_network_time_sec,
+                    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY network_time_sec) AS p75_network_time_sec,
+                    PERCENTILE_DISC(0.99) WITHIN GROUP (ORDER BY network_time_sec) AS p99_network_time_sec,
+                    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY internal_time_sec) AS p50_internal_time_sec,
+                    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY internal_time_sec) AS p75_internal_time_sec,
+                    PERCENTILE_DISC(0.99) WITHIN GROUP (ORDER BY internal_time_sec) AS p99_internal_time_sec,
+                    PERCENTILE_DISC(0.5) WITHIN GROUP (ORDER BY total_time_sec) AS p50_total_time_sec,
+                    PERCENTILE_DISC(0.75) WITHIN GROUP (ORDER BY total_time_sec) AS p75_total_time_sec,
+                    PERCENTILE_DISC(0.99) WITHIN GROUP (ORDER BY total_time_sec) AS p99_total_time_sec
                   FROM intervals
                   LEFT JOIN ny.market_data_time_diffs mdtd ON
                     mdtd.rcd_ts >= intervals.interval_start AND
