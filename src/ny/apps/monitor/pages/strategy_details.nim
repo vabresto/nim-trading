@@ -1,10 +1,10 @@
 import std/json
 import std/strformat
-import std/tables
 import std/times
 
 import chronicles
 import db_connector/db_postgres
+import fusion/btreetables
 
 import ny/core/inspector/server as inspector_server
 import ny/apps/monitor/ws_manager
@@ -139,7 +139,8 @@ proc renderStrategyStates*(state: WsClientState): string =
       """
 
     for key, order in details["base"]["pendingOrders"].pairs:
-      result &= fmt"""
+      result &= fmt"""36
+
       <tr>
         <td>{order["clientOrderId"].getStr}</td>
         <td>{order["id"].getStr}</td>

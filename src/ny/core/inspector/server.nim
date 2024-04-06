@@ -1,3 +1,4 @@
+import std/algorithm
 import std/asyncdispatch
 import std/asyncnet
 import std/json
@@ -8,18 +9,53 @@ import std/strutils
 import std/tables
 
 import chronicles except toJson
+import jsony
 
 import ny/core/env/envs
 import ny/core/inspector/shared
 
 
 type
-  StrategyStatesObj = Table[string, Table[string, Table[string, JsonNode]]]
+  StrategyStatesObj* = OrderedTable[string, OrderedTable[string, OrderedTable[string, JsonNode]]]
+
 
 var gStrategyStatesLock: RLock
 # Date -> Strategy -> Symbol -> JsonNode
-var gStrategyStates {.guard: gStrategyStatesLock.}: StrategyStatesObj = initTable[string, Table[string, Table[string, JsonNode]]]()
+var gStrategyStates {.guard: gStrategyStatesLock.}: StrategyStatesObj = initOrderedTable[string, OrderedTable[string, OrderedTable[string, JsonNode]]]()
 gStrategyStatesLock.initRLock()
+
+
+proc resort(tab: StrategyStatesObj): StrategyStatesObj =
+  let dates = block:
+    var dates = newSeq[string]()
+    for date in tab.keys:
+      dates.add date
+    dates.sorted.reversed
+
+  result = initOrderedTable[string, OrderedTable[string, OrderedTable[string, JsonNode]]]()
+
+  for date in dates:
+    let strategies = block:
+      var strategies = newSeq[string]()
+      for strategy in tab[date].keys:
+        strategies.add strategy
+      strategies.sorted
+    
+    var strategyData = initOrderedTable[string, OrderedTable[string, JsonNode]]()
+    for strategy in strategies:
+      let symbols = block:
+        var symbols = newSeq[string]()
+        for symbol in tab[date][strategy].keys:
+          symbols.add symbol
+        symbols.sorted
+      
+      var symbolData = initOrderedTable[string, JsonNode]()
+      for symbol in symbols:
+        symbolData[symbol] = tab[date][strategy][symbol]
+      
+      strategyData[strategy] = symbolData
+
+    result[date] = strategyData
 
 
 proc getStrategyStates*(): lent StrategyStatesObj =
@@ -40,10 +76,10 @@ proc loadStrategyStates() =
   let rawData = dumpFile.readAll.strip
   if rawData.len == 0:
     return
-  
+
   withRLock(gStrategyStatesLock):
     {.gcsafe.}:
-      gStrategyStates = rawData.parseJson.to(StrategyStatesObj)
+      gStrategyStates = rawData.fromJson(StrategyStatesObj).resort()
 
 
 proc dumpStrategyStates*() {.gcsafe.} =
@@ -95,10 +131,12 @@ proc handleClient(client: AsyncSocket) {.async, gcsafe.} =
         withRLock(gStrategyStatesLock):
           {.gcsafe.}:
             if dateStr notin gStrategyStates:
-              gStrategyStates[dateStr] = initTable[string, Table[string, JsonNode]]()
+              gStrategyStates[dateStr] = initOrderedTable[string, OrderedTable[string, JsonNode]]()
             if strategyId notin gStrategyStates[dateStr]:
-              gStrategyStates[dateStr][strategyId] = initTable[string, JsonNode]()
+              gStrategyStates[dateStr][strategyId] = initOrderedTable[string, JsonNode]()
             gStrategyStates[dateStr][strategyId][symbol] = parsed
+
+            gStrategyStates = gStrategyStates.resort()
 
         dumpStrategyStates()
 
