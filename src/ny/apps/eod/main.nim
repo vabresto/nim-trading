@@ -45,6 +45,17 @@ proc sleepUntilNextHour() =
     sleep dur
 
 
+iterator iterateNextWeekBusinessDays(startDateStr: string): DateTime =
+    let startDate = parse(startDateStr, "yyyy-MM-dd")
+    let endDate = startDate + initDuration(days=7)
+
+    var currentDate = startDate
+    while currentDate <= endDate:
+        if currentDate.weekday != dSat and currentDate.weekday != dSun:
+            yield currentDate
+        currentDate += days(1)
+
+
 proc main() {.raises: [].} =
   let _ = parseCliArgs()
 
@@ -245,7 +256,51 @@ proc main() {.raises: [].} =
                   p99_total_time_sec = EXCLUDED.p99_total_time_sec;
               """), date.format("yyyy-MM-dd"))
 
-          # Add the symbols + feeds to register to next
+          # Add the symbols + feeds to register to next based on what we are currently registered for
+          var processedAnyFeedsToRegister = false
+          for curSubRow in db.getAllRows(sql("""
+            WITH LatestDate AS (
+                SELECT feed, MAX(date) AS max_date FROM ny.md_subscriptions group by feed
+            )
+            SELECT
+              feed,
+              max_date,
+              case
+                when feed = 'sip' then 3
+                when feed = 'iex' then 2
+                when feed = 'test' then 1
+            end as feed_priority
+            FROM LatestDate
+            WHERE EXISTS (SELECT 1 FROM ny.md_subscriptions)
+            order by feed_priority DESC
+          """)):
+            if processedAnyFeedsToRegister:
+              continue
+            processedAnyFeedsToRegister = true
+
+            let symbols = block:
+              var symbols = newSeq[tuple[feed: string, symbol: string]]()
+              for symbolRow in db.getAllRows(sql("""
+                SELECT
+                  feed,
+                  symbol
+                FROM ny.md_subscriptions
+                WHERE feed = ?
+                 AND date = ?
+              """), curSubRow[0], curSubRow[1]):
+                symbols.add((symbolRow[0], symbolRow[1]))
+              symbols
+
+            db.exec(sql("BEGIN;"))
+            for date in iterateNextWeekBusinessDays(curDate):
+              info "Updating market data subscriptions setting", date, symbols
+              db.exec(sql("DELETE FROM ny.md_subscriptions WHERE date = ?"), date)
+              for (feed, symbol) in symbols:
+                db.exec(sql("""
+                  INSERT INTO ny.md_subscriptions (date, feed, symbol)
+                  VALUES (?, ?, ?);
+                """), date, feed, symbol)
+            db.exec(sql("COMMIT;"))
 
           # Sleep until roughly the next hour mark
           sleepUntilNextHour()
