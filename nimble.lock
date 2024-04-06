@@ -140,59 +140,14 @@
         "sha1": "77b8e52044389efe983eff5d0ea2990380d85102"
       }
     },
-    "questionable": {
-      "version": "0.10.13",
-      "vcsRevision": "47692e0d923ada8f7f731275b2a87614c0150987",
-      "url": "https://github.com/markspanbroek/questionable",
+    "webby": {
+      "version": "0.2.1",
+      "vcsRevision": "325d6ade0970562bee7d7d53961a2c3287f0c4bc",
+      "url": "https://github.com/treeform/webby/",
       "downloadMethod": "git",
       "dependencies": [],
       "checksums": {
-        "sha1": "1718359cebdbb1c3f9ad250a7fb03cac1af4e1d1"
-      }
-    },
-    "ws": {
-      "version": "0.5.0",
-      "vcsRevision": "5ac521b72d7d4860fb394e5e1f9f08cf480e9822",
-      "url": "https://github.com/treeform/ws",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "fc2387f52ce71066276df07c72cd21b510bcdb30"
-      }
-    },
-    "nim_redis": {
-      "version": "0.3.0",
-      "vcsRevision": "164c331b71ce6b244cf645267589c457c3808607",
-      "url": "ssh://git@github-personal/vabresto/nim-redis.git",
-      "downloadMethod": "git",
-      "dependencies": [
-        "chronicles",
-        "questionable",
-        "results",
-        "stew"
-      ],
-      "checksums": {
-        "sha1": "e5b801e61faf11f5d593e3124175405436457a0c"
-      }
-    },
-    "jsony": {
-      "version": "1.1.5",
-      "vcsRevision": "649705ec70dffeecba4c40df914b62d37a1c695c",
-      "url": "https://github.com/treeform/jsony",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "84d4a78d049a4d00057f749c72a479c2ea4e38fa"
-      }
-    },
-    "db_connector": {
-      "version": "0.1.0",
-      "vcsRevision": "07a60d54c4b68f1b70266ca08a23fb1a7c78c91b",
-      "url": "https://github.com/nim-lang/db_connector",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "f9aa61913b739de65d6106323d270639016a54ba"
+        "sha1": "1d9978ac16fdb56fad2ee9eaa0fcbb7860229d39"
       }
     },
     "threading": {
@@ -203,26 +158,6 @@
       "dependencies": [],
       "checksums": {
         "sha1": "803d3ded730a7ae2d5f32e4fb2e12e8a5073ca6d"
-      }
-    },
-    "fusion": {
-      "version": "1.2",
-      "vcsRevision": "562467452b32cb7a97410ea177f083e6d8405734",
-      "url": "https://github.com/nim-lang/fusion",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "af8413e23fc803311a2e706dc7b8d9b6f68c5de9"
-      }
-    },
-    "webby": {
-      "version": "0.2.1",
-      "vcsRevision": "325d6ade0970562bee7d7d53961a2c3287f0c4bc",
-      "url": "https://github.com/treeform/webby/",
-      "downloadMethod": "git",
-      "dependencies": [],
-      "checksums": {
-        "sha1": "1d9978ac16fdb56fad2ee9eaa0fcbb7860229d39"
       }
     },
     "zippy": {
@@ -269,6 +204,71 @@
       ],
       "checksums": {
         "sha1": "4b42e2d861877701288ea069a743dc74b6786e02"
+      }
+    },
+    "questionable": {
+      "version": "0.10.13",
+      "vcsRevision": "47692e0d923ada8f7f731275b2a87614c0150987",
+      "url": "https://github.com/markspanbroek/questionable",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "1718359cebdbb1c3f9ad250a7fb03cac1af4e1d1"
+      }
+    },
+    "nim_redis": {
+      "version": "0.4.0",
+      "vcsRevision": "2327f97bc097e46c8710264cefef82fb69cd20a6",
+      "url": "https://github.com/vabresto/nim-redis.git",
+      "downloadMethod": "git",
+      "dependencies": [
+        "chronicles",
+        "questionable",
+        "results",
+        "stew"
+      ],
+      "checksums": {
+        "sha1": "4e3ac4b557eb1f56f69f9cd763152880f9c09a87"
+      }
+    },
+    "ws": {
+      "version": "0.5.0",
+      "vcsRevision": "5ac521b72d7d4860fb394e5e1f9f08cf480e9822",
+      "url": "https://github.com/treeform/ws",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "fc2387f52ce71066276df07c72cd21b510bcdb30"
+      }
+    },
+    "jsony": {
+      "version": "1.1.5",
+      "vcsRevision": "649705ec70dffeecba4c40df914b62d37a1c695c",
+      "url": "https://github.com/treeform/jsony",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "84d4a78d049a4d00057f749c72a479c2ea4e38fa"
+      }
+    },
+    "db_connector": {
+      "version": "0.1.0",
+      "vcsRevision": "07a60d54c4b68f1b70266ca08a23fb1a7c78c91b",
+      "url": "https://github.com/nim-lang/db_connector",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "f9aa61913b739de65d6106323d270639016a54ba"
+      }
+    },
+    "fusion": {
+      "version": "1.2",
+      "vcsRevision": "562467452b32cb7a97410ea177f083e6d8405734",
+      "url": "https://github.com/nim-lang/fusion",
+      "downloadMethod": "git",
+      "dependencies": [],
+      "checksums": {
+        "sha1": "af8413e23fc803311a2e706dc7b8d9b6f68c5de9"
       }
     }
   },

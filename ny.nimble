@@ -35,7 +35,7 @@ requires "results#193d3c6648bd0f7e834d4ebd6a1e1d5f93998197"
 requires "threading#79195379ba682fc672690854ad4ec48c9362eb6f"
 requires "ws#5ac521b72d7d4860fb394e5e1f9f08cf480e9822"
 
-requires "ssh://git@github-personal/vabresto/nim-redis.git#164c331b71ce6b244cf645267589c457c3808607"
+requires "https://github.com/vabresto/nim-redis.git#2327f97bc097e46c8710264cefef82fb69cd20a6"
 
 # Indirect dependencies, pin git hashes because they don't properly update versions
 requires "stew#1662762c0144854db60632e4115fe596ffa67fca"

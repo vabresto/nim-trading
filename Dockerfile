@@ -1,21 +1,6 @@
 # STAGE 1
 FROM nimlang/nim:2.0.2-alpine-regular as build
 
-RUN apk add --update --no-cache openssh
-
-RUN mkdir -p /root/.ssh/ && \
-    chmod 700 /root/.ssh && \
-    ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-COPY ./private_ssh_key /root/.ssh/private_ssh_key
-RUN chmod 600 /root/.ssh/private_ssh_key
-
-RUN echo $'\
-Host github-personal \n\
-    User git \n\
-    Hostname github.com \n\
-    IdentityFile ~/.ssh/private_ssh_key \n\
-' > ~/.ssh/config
-
 WORKDIR /build
 
 COPY nim.cfg .
