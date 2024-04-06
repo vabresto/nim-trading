@@ -147,6 +147,22 @@ services:
     environment:
       TZ: America/New_York
       NY_MON_TARGETS: "market-data-websocket, market-data-recorder, order-update-recorder, order-update-websocket, runner-strategy-dummy"
+  
+  eod:
+    image: project-ny
+    command: /ny/bin/ny-eod
+    restart: always
+    networks:
+      - db_net
+      - redis_net
+    environment:
+      TZ: America/New_York
+      MD_REDIS_HOST: ${MD_REDIS_HOST}
+      MD_REDIS_PASS: ${MD_REDIS_PASS}
+      MD_PG_HOST: ${MD_PG_HOST}
+      MD_PG_USER: ${MD_PG_USER}
+      MD_PG_PASS: ${MD_PG_PASS}
+      MD_PG_NAME: ${MD_PG_NAME}
 
 
 volumes:

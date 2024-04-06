@@ -37,11 +37,51 @@ SELECT
   receive_timestamp at time zone 'America/New_York' as rcv_ts,
   recording_timestamp at time zone 'America/New_York' as rcd_ts,
   
-  extract(epoch from receive_timestamp - event_timestamp) as network_time_sec,
-  extract(epoch from recording_timestamp - receive_timestamp) as internal_time_sec,
-  extract(epoch from (recording_timestamp - event_timestamp)) as total_time_sec
+  greatest(0, extract(epoch from receive_timestamp - event_timestamp)) as network_time_sec,
+  greatest(0, extract(epoch from recording_timestamp - receive_timestamp)) as internal_time_sec,
+  greatest(0, extract(epoch from (recording_timestamp - event_timestamp))) as total_time_sec
 FROM ny.raw_market_data
 WHERE type != 'BarMinute';
+
+
+CREATE TABLE IF NOT EXISTS ny.latency_stats_breakdown (
+  date DATE NOT NULL,
+  interval_start TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  interval_end TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+  num_events INTEGER NOT NULL,
+  avg_network_time_sec NUMERIC NOT NULL,
+  avg_internal_time_sec NUMERIC NOT NULL,
+  avg_total_time_sec NUMERIC NOT NULL,
+  p50_network_time_sec NUMERIC NOT NULL,
+  p75_network_time_sec NUMERIC NOT NULL,
+  p99_network_time_sec NUMERIC NOT NULL,
+  p50_internal_time_sec NUMERIC NOT NULL,
+  p75_internal_time_sec NUMERIC NOT NULL,
+  p99_internal_time_sec NUMERIC NOT NULL,
+  p50_total_time_sec NUMERIC NOT NULL,
+  p75_total_time_sec NUMERIC NOT NULL,
+  p99_total_time_sec NUMERIC NOT NULL,
+  PRIMARY KEY (date, interval_start, interval_end)
+);
+
+
+CREATE TABLE IF NOT EXISTS ny.latency_stats_daily (
+    date DATE NOT NULL,
+    num_events INTEGER NOT NULL,
+    avg_network_time_sec NUMERIC NOT NULL,
+    avg_internal_time_sec NUMERIC NOT NULL,
+    avg_total_time_sec NUMERIC NOT NULL,
+    p50_network_time_sec NUMERIC NOT NULL,
+    p75_network_time_sec NUMERIC NOT NULL,
+    p99_network_time_sec NUMERIC NOT NULL,
+    p50_internal_time_sec NUMERIC NOT NULL,
+    p75_internal_time_sec NUMERIC NOT NULL,
+    p99_internal_time_sec NUMERIC NOT NULL,
+    p50_total_time_sec NUMERIC NOT NULL,
+    p75_total_time_sec NUMERIC NOT NULL,
+    p99_total_time_sec NUMERIC NOT NULL,
+    PRIMARY KEY (date)
+);
 
 
 create table if not exists ny.md_subscriptions (
