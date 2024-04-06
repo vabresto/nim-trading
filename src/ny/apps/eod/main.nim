@@ -83,12 +83,12 @@ proc main() {.raises: [].} =
           # Prune any market data older than 30 days (could probably go more than this np)
           let dbMaxPruneDate = (curTime - initDuration(days=30)).getDateStr
 
-          # for table in ["parsed_market_data", "raw_market_data"]:
-          #   info "Pruning table ...", table, dbMaxPruneDate
-          #   db.exec(sql(fmt"""
-          #   DELETE FROM ny.{table} WHERE date < ?;
-          #   """), dbMaxPruneDate)
-          #   info "Done pruning table", table, dbMaxPruneDate
+          for table in ["parsed_market_data", "raw_market_data"]:
+            info "Pruning table ...", table, dbMaxPruneDate
+            db.exec(sql(fmt"""
+            DELETE FROM ny.{table} WHERE date < ?;
+            """), dbMaxPruneDate)
+            info "Done pruning table", table, dbMaxPruneDate
 
           # Get last date we have breakdown stats for
           let curDate = curTime.getDateStr
