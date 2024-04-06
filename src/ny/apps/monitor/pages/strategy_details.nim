@@ -8,14 +8,12 @@ import fusion/btreetables
 
 import ny/core/inspector/server as inspector_server
 import ny/apps/monitor/ws_manager
+import ny/apps/monitor/db_wrapper
 import ny/core/types/price
 import ny/core/types/timestamp
-import ny/core/db/mddb
-import ny/core/env/envs
+# import ny/core/db/mddb
+# import ny/core/env/envs
 import ny/core/types/strategy_base
-
-
-var gStrategyDetailsDb = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
 
 
 proc getTimestamp(node: JsonNode): Timestamp =
@@ -29,6 +27,9 @@ proc getPrice(node: JsonNode): Price =
 proc renderStrategyStates*(state: WsClientState): string =
   {.gcsafe.}:
     let strategyStates = getStrategyStates()
+
+  # var strategyDetailsDb = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
+  # defer: strategyDetailsDb.close()
 
   let strategy = state.strategy
   let symbol = state.symbol
@@ -254,7 +255,8 @@ proc renderStrategyStates*(state: WsClientState): string =
 
   block `FillHistory`:
     try:
-      let fills = gStrategyDetailsDb.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
+      # let fills = strategyDetailsDb.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
+      let fills = db_wrapper.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
       result &= """
         <section>
           <h3>Fill History</h3>

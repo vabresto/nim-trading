@@ -36,6 +36,7 @@ proc indexHandler(request: Request) =
         </ul>
         <ul>
           <li><a ws-send hx-vals='{"type": "change-page", "new-page": "overview"}'>Overview</a></li>
+          <li><a ws-send hx-vals='{"type": "change-page", "new-page": "stats-daily-latency"}'>Latency</a></li>
           <li><a ws-send hx-vals='{"type": "change-page", "new-page": "strategy-list"}'>Strategies</a></li>
         </ul>
       </nav>
@@ -76,6 +77,8 @@ proc websocketHandler(
           case parsed["new-page"].getStr
           of "overview":
             manager.setState(websocket, WsClientState(kind: Overview))
+          of "stats-daily-latency":
+            manager.setState(websocket, WsClientState(kind: StatsDailyLatency))
           of "strategy-list":
             manager.setState(websocket, WsClientState(kind: StrategyList))
           of "strategy-details":

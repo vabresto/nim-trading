@@ -9,12 +9,15 @@ import mummy
 type
   WsClientStateKind* = enum
     Overview
+    StatsDailyLatency
     StrategyList
     StrategyDetails
 
   WsClientState* = object
     case kind*: WsClientStateKind
     of Overview:
+      discard
+    of StatsDailyLatency:
       discard
     of StrategyList:
       discard

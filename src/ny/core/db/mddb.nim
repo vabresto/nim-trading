@@ -3,6 +3,7 @@ import std/net
 import std/options
 import std/os
 import std/strutils
+import std/times
 
 import chronicles except toJson
 import db_connector/db_postgres
@@ -239,3 +240,67 @@ proc getFillHistory*(db: DbConn, date: string, strategy: string, symbol: string)
       positionQty: row[9].parseInt,
     )
   return fills
+
+
+type
+  DailyLatencyStat* = object
+    date*: string
+    numEvents*: int64
+
+    avgNetworkTime*: Duration
+    avgInternalTime*: Duration
+    avgTotalTime*: Duration
+
+    p50NetworkTime*: Duration
+    p75NetworkTime*: Duration
+    p99NetworkTime*: Duration
+
+    p50InternalTime*: Duration
+    p75InternalTime*: Duration
+    p99InternalTime*: Duration
+
+    p50TotalTime*: Duration
+    p75TotalTime*: Duration
+    p99TotalTime*: Duration
+
+
+proc getDailyLatencyStats*(db: DbConn): seq[DailyLatencyStat] =
+  const nanosMultiplier = 1_000_000_000.float
+
+  var stats = newSeq[DailyLatencyStat]()
+  for row in db.rows(sql("""
+      SELECT
+        date,
+        num_events,
+        avg_network_time_sec,
+        avg_internal_time_sec,
+        avg_total_time_sec,
+        p50_network_time_sec,
+        p75_network_time_sec,
+        p99_network_time_sec,
+        p50_internal_time_sec,
+        p75_internal_time_sec,
+        p99_internal_time_sec,
+        p50_total_time_sec,
+        p75_total_time_sec,
+        p99_total_time_sec
+      FROM ny.latency_stats_daily
+      ORDER BY date DESC
+      """)):
+    stats.add DailyLatencyStat(
+      date: row[0],
+      numEvents: row[1].parseBiggestInt,
+      avgNetworkTime: initDuration(nanoseconds=(row[2].parseFloat * nanosMultiplier).int64),
+      avgInternalTime: initDuration(nanoseconds=(row[3].parseFloat * nanosMultiplier).int64),
+      avgTotalTime: initDuration(nanoseconds=(row[4].parseFloat * nanosMultiplier).int64),
+      p50NetworkTime: initDuration(nanoseconds=(row[5].parseFloat * nanosMultiplier).int64),
+      p75NetworkTime: initDuration(nanoseconds=(row[6].parseFloat * nanosMultiplier).int64),
+      p99NetworkTime: initDuration(nanoseconds=(row[7].parseFloat * nanosMultiplier).int64),
+      p50InternalTime: initDuration(nanoseconds=(row[8].parseFloat * nanosMultiplier).int64),
+      p75InternalTime: initDuration(nanoseconds=(row[9].parseFloat * nanosMultiplier).int64),
+      p99InternalTime: initDuration(nanoseconds=(row[10].parseFloat * nanosMultiplier).int64),
+      p50TotalTime: initDuration(nanoseconds=(row[11].parseFloat * nanosMultiplier).int64),
+      p75TotalTime: initDuration(nanoseconds=(row[12].parseFloat * nanosMultiplier).int64),
+      p99TotalTime: initDuration(nanoseconds=(row[13].parseFloat * nanosMultiplier).int64),
+    )
+  stats
