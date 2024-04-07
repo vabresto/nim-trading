@@ -12,7 +12,6 @@ namedBin["ny/apps/md_rec/main"] = "ny-md-rec"
 namedBin["ny/apps/monitor/main"] = "ny-monitor"
 namedBin["ny/apps/ou_ws/main"] = "ny-ou-ws"
 namedBin["ny/apps/ou_rec/main"] = "ny-ou-rec"
-namedBin["ny/apps/trading/main"] = "ny-trading"
 namedBin["ny/apps/runner/main"] = "ny-runner"
 namedBin["ny/apps/eod/main"] = "ny-eod"
 
