@@ -67,17 +67,17 @@ proc main() {.raises: [].} =
           let curTime = getNowUtc()
           
           let curHour = curTime.toDateTime.hour
-          # if curHour > 7:
-          #   # Don't do anything if it is after 7 am
-          #   info "Current hour after cutoff, sleeping ...", curHour
-          #   sleep initDuration(hours=1).inMilliseconds
-          #   continue
+          if curHour > 7:
+            # Don't do anything if it is after 7 am
+            info "Current hour after cutoff, sleeping ...", curHour
+            sleep initDuration(hours=1).inMilliseconds
+            continue
 
           # Prune any redis keys older than 3 days
           let redisMaxPruneDate = (curTime - initDuration(days=5)).getDateStr
           let redisRes = redis.cmd("SCAN", "0")
           if redisRes.isErr:
-            error "Failed to prune redis!", error=redisRes.error.msg
+            error "Failed to scan redis!", error=redisRes.error.msg
           else:
             try:
               let keys = redisRes[].arr[1].arr
@@ -88,6 +88,9 @@ proc main() {.raises: [].} =
                 let keyDate = splitted[1]
                 if keyDate < redisMaxPruneDate:
                   info "Pruning key", key, keyDate, redisMaxPruneDate
+                  let delRes = redis.cmd("DEL", key.str)
+                  if delRes.isErr:
+                    error "Failed to prune redis key", key, error=delRes.error.msg
             except KeyError:
               error "Key error trying to prune redis keys", msg=getCurrentExceptionMsg()
 
