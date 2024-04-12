@@ -256,7 +256,7 @@ proc renderStrategyStates*(state: WsClientState): string =
   block `FillHistory`:
     try:
       # let fills = strategyDetailsDb.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
-      let fills = db_wrapper.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
+      let fills = db_wrapper.getFillHistory(date, strategy, symbol)
       result &= """
         <section>
           <h3>Fill History</h3>
