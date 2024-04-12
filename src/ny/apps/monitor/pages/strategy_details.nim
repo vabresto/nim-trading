@@ -140,7 +140,7 @@ proc renderStrategyStates*(state: WsClientState): string =
       """
 
     for key, order in details["base"]["pendingOrders"].pairs:
-      result &= fmt"""36
+      result &= fmt"""
 
       <tr>
         <td>{order["clientOrderId"].getStr}</td>
