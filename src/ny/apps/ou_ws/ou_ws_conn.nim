@@ -42,6 +42,7 @@ proc receiveTradeUpdateReply*(ws: WebSocket, usesBinaryFrames: bool): Future[Opt
 
 proc initWebsocket*(baseUrl: string, alpacaKey: string, alpacaSecret: string): Future[WebSocket] {.async.} =
   ## Important note: paper trading websocket returns binary frames, but prod uses text frames
+  ## This function handles auth and subscribing to trade updates, and returns a properly configured websocket
   let usesBinaryFrames = "paper" in baseUrl
 
   # First, create the socket

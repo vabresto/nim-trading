@@ -1,3 +1,18 @@
+## # Overview
+## 
+## The [runner (ny-runner)](src/ny/apps/runner/main.nim) is the process that actually does trading. It supports running
+## in both a `live` and `simulation` mode, and executes user-implemented (pure functional) strategies.
+## 
+## 
+## In live mode, it connects to a redis server for market data and order update streams.
+## 
+## 
+## In simulation mode, it implements a (very very very basic) exchange matching engine that interacts with the model's
+## orders.
+## 
+## 
+## > **IMPORTANT NOTE:** This project is purely for educational purposes, and has never been tested with real money.
+
 import std/enumerate
 import std/tables
 import std/times

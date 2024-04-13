@@ -2,14 +2,13 @@ import std/json
 import std/tables
 import std/strformat
 
-# import fusion/btreetables
-
 import ny/core/inspector/server as inspector_server
 import ny/apps/monitor/ws_manager
 
 
 
 proc renderStrategyList*(state: WsClientState): string =
+  ## This function renders the table of historical strategy runs
   {.gcsafe.}:
     let strategyStates = getStrategyStates()
 
@@ -39,6 +38,7 @@ proc renderStrategyList*(state: WsClientState): string =
 
 
 proc renderStrategyListPage*(state: WsClientState): string =
+  ## Renders the list of strategies (what ran historically)
   fmt"""
     <div id="page">
       {renderStrategyList(state)}

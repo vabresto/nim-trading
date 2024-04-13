@@ -26,6 +26,7 @@ func formatDuration(dur: Duration): string =
 
 
 proc renderStatsDailyLatency*(state: WsClientState): string =
+  ## This function renders the historical daily latency stats table
   result = """<div id="stats-daily-latency" hx-swap-oob="true">"""
 
   try:
@@ -97,6 +98,7 @@ proc renderStatsDailyLatency*(state: WsClientState): string =
 
 
 proc renderStatsDailyLatencyPage*(state: WsClientState): string =
+  ## Renders the daily latency stats page
   fmt"""
     <div id="page">
       {renderStatsDailyLatency(state)}

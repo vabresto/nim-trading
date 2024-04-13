@@ -1,3 +1,7 @@
+## # Overview
+## 
+## This module implements a very simple orders book
+
 import std/algorithm
 import std/options
 import std/tables

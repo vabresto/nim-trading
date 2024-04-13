@@ -1,3 +1,9 @@
+## # Overview
+## 
+## This module implements a custom nanosecond precision timestamp. Although Nim datetimes are
+## already nanosecond resolution, there are some inconveniences working with them, whereas
+## this `Timestamp` class is simplified and has a smaller but well-defined scope.
+
 import std/strutils
 import std/times
 

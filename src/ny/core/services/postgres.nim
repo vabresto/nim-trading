@@ -1,3 +1,7 @@
+## # Overview
+## 
+## This module implements a wrapper for postgres db access, injecting the relevant variables into scope.
+
 import chronicles except toJson
 import db_connector/db_postgres
 

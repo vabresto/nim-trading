@@ -1,3 +1,6 @@
+## This module implements the websocket manager, which is primarily responsible for managing connections
+## and sending messages to the appropriate clients.
+
 import std/rlocks
 import std/options
 import std/tables

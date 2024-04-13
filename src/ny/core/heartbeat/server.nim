@@ -1,3 +1,8 @@
+## # Overview
+## 
+## The heartbeat server module runs in an independent thread, is used for liveness checks by
+## the ny-monitor service. It uses a simple custom TCP protocol.
+
 import std/json
 import std/net
 import std/rlocks

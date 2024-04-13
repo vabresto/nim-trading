@@ -27,9 +27,9 @@ type
     notional*: string = ""
 
     limitPrice*: Option[Price]
-    # stopPrice*: string = ""
-    # trailPrice*: string = ""
-    # trailPercent*: string = ""
+    # stopPrice*: string = "" # not implemented
+    # trailPrice*: string = "" # not implemented
+    # trailPercent*: string = "" # not implemented
     extendedHours*: bool = false
     clientOrderId*: string = ""
     # Several fields missing here
@@ -150,6 +150,7 @@ func makeLimitOrder*(symbol: string, side: AlpacaSideKind, tif: AlpacaTifKind, q
 
 
 proc dumpHook*(s: var string, v: AlpacaOrder) =
+  ## Dump into a format compatible with the Alpaca API
   s.add "{\"symbol\":"
   dumpHook(s, v.symbol)
 

@@ -8,6 +8,8 @@ import ny/apps/monitor/heartbeats
 
 
 proc renderHeartbeats*(curTime: Timestamp, heartbeats: Table[string, bool]): string =
+  ## This function renders the system status table (essentially displaying whether
+  ## services are running or not), and the timestamp at which the check was done.
   var msg = ""
   try:
     msg = fmt"""
@@ -50,6 +52,9 @@ proc renderHeartbeats*(curTime: Timestamp, heartbeats: Table[string, bool]): str
 
 
 proc renderNumConnectedClientsImpl*(manager: WsManager): string {.gcsafe.} =
+  ## This function renders the server info section; for now limited to just the
+  ## number of connected websocket clients (referring to website users, not trading
+  ## system info)
   fmt"""
   <div id="server-info" hx-swap-oob="true">
     <section>
@@ -61,6 +66,7 @@ proc renderNumConnectedClientsImpl*(manager: WsManager): string {.gcsafe.} =
 
 
 proc renderOverviewPage*(state: WsClientState): string =
+  ## Renders the overview page
   fmt"""
     <div id="page">
       {renderHeartbeats(getNowUtc(), getHeartbeats())}

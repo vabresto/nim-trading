@@ -1,9 +1,9 @@
-# import std/options
+## # Overview
+## 
+## This module implements a wrapper for websocket access, injecting the relevant variables into scope.
 
 import chronicles except toJson
 import nim_redis
-
-# import ny/core/env/envs
 
 template withWebsocket*(ws, init: untyped, loop: untyped): untyped =
   var ws: WebSocket

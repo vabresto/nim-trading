@@ -1,7 +1,10 @@
-# import std/json
+## # Overview
+## 
+## This module implements a wrapper for redis stream access and handling, injecting the relevant variables into scope.
+## It is a secondary processing step on top of the redis and postgres modules.
+
 import std/net
 import std/options
-# import std/os
 import std/tables
 import std/times
 
@@ -9,14 +12,9 @@ import chronicles except toJson
 import db_connector/db_postgres
 import nim_redis
 
-# import ny/core/db/mddb
-# import ny/core/env/envs
-# import ny/core/md/utils
 import ny/core/types/timestamp
 import ny/core/utils/rec_parseopt
 import ny/core/utils/sim_utils
-# import ny/core/streams/md_streams
-# import ny/core/heartbeat/server
 import ny/core/services/postgres
 import ny/core/services/redis
 

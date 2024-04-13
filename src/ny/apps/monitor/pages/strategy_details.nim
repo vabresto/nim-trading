@@ -4,15 +4,13 @@ import std/times
 
 import chronicles
 import db_connector/db_postgres
-import fusion/btreetables
+import fusion/btreetables # used
 
 import ny/core/inspector/server as inspector_server
 import ny/apps/monitor/ws_manager
 import ny/apps/monitor/db_wrapper
 import ny/core/types/price
 import ny/core/types/timestamp
-# import ny/core/db/mddb
-# import ny/core/env/envs
 import ny/core/types/strategy_base
 
 
@@ -25,11 +23,15 @@ proc getPrice(node: JsonNode): Price =
 
 
 proc renderStrategyStates*(state: WsClientState): string =
+  ## This function renders the entire strategy states page, other than the wrapping div. It includes:
+  ## - Strategy name and mode (live/sim)
+  ## - breakdown of current strategy properties (ex. position, P&L, notional traded, etc)
+  ## - pending orders (in flight)
+  ## - open orders (ack'd by alpac)
+  ## - strategy specific stats (ex. strategy logical state)
+  ## - fill history for today's activity
   {.gcsafe.}:
     let strategyStates = getStrategyStates()
-
-  # var strategyDetailsDb = getMdDb(loadOrQuit("MD_PG_HOST"), loadOrQuit("MD_PG_USER"), loadOrQuit("MD_PG_PASS"), loadOrQuit("MD_PG_NAME"))
-  # defer: strategyDetailsDb.close()
 
   let strategy = state.strategy
   let symbol = state.symbol
@@ -255,7 +257,6 @@ proc renderStrategyStates*(state: WsClientState): string =
 
   block `FillHistory`:
     try:
-      # let fills = strategyDetailsDb.getFillHistory(getNowUtc().toDateTime().getDateStr(), strategy, symbol)
       let fills = db_wrapper.getFillHistory(date, strategy, symbol)
       result &= """
         <section>
@@ -316,6 +317,7 @@ proc renderStrategyStates*(state: WsClientState): string =
 
 
 proc renderStrategyDetailsPage*(state: WsClientState): string =
+  ## Renders the strategy details page
   fmt"""
     <div id="page">
       {renderStrategyStates(state)}

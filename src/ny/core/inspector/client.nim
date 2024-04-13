@@ -1,8 +1,18 @@
-# This is implemented by the strategies
-
-# Format:
-# { base: {}, strategy: {} }
-# Base has all of the strategy base attributes (common attributes), and strategy has all of the strategy specific attributes (ex. strategy state)
+## # Overview
+## 
+## The inspector modules are similar to the heartbeat modules, but used to communicate information about the
+## strategy that is currently running. This can be extended to feed other data to the monitor system as well.
+## 
+## 
+## This is implemented by the strategies. In contrast with the heartbeats, the inspector stats are pushed by
+## the strategies, instead of pulled by the monitor service.
+## 
+## 
+## Format:
+## { base: {}, strategy: {} }
+## 
+## 
+## Base has all of the strategy base attributes (common attributes), and strategy has all of the strategy specific attributes (ex. strategy state)
 
 import std/json
 import std/net

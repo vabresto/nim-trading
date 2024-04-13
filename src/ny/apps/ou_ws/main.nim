@@ -1,3 +1,10 @@
+## # Overview
+## 
+## The [order update websocket (ny-ou-ws)](src/ny/apps/ou_ws/main.nim) is similar to the [market data ws](#md-ws) except
+## it connects to the Alpaca order updates websocket instead of the market data websocket. There are more meaningful
+## differences here as the order update websocket returns binary frames and has a slightly different protocol response
+## structure.
+
 import std/asyncdispatch
 import std/json
 import std/net

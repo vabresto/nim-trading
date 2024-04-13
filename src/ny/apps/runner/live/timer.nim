@@ -1,4 +1,6 @@
 ## Implements a timer module to get a callback at a specified point in time
+## 
+## 
 ## Note: In simulation mode, we need to ensure that events are chronologically ordered,
 ## but we don't want to/can't wait for the actual requested time.
 

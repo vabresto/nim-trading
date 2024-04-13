@@ -11,6 +11,7 @@ type
   ClientOrderId* {.borrow.} = string
 
   SysOrder* = object
+    ## Internal order representation
     id*: OrderId = "".OrderId # set by the remote
     clientOrderId*: ClientOrderId = "".ClientOrderId
     side*: SysSideKind

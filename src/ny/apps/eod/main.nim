@@ -1,5 +1,15 @@
-## This is a market data recorder
-## It subscribes to a redis stream, and forwards the data into a db
+## # Overview
+## 
+## The [eod (ny-eod)](src/ny/apps/eod/main.nim) app runs at the end of the day, and is primarily responsible for managing 
+## various post-trade tasks. In particular, it erases logged market and order update data in order to preserve disk 
+## space, as well as computing some aggregated analytics stats.
+## 
+## 
+## It currently keeps 7 days of raw data in redis, and 30 days of raw market data in the postgres db.
+## 
+## 
+## Lastly, it propagates the current configuration of feeds and symbols to which the system should subscribe, so that once
+## configured, it can be left to run independently.
 
 import std/net
 import std/options

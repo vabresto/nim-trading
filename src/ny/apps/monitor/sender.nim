@@ -16,6 +16,7 @@ type
 
 
 proc runSenderThread*(args: SenderThreadArgs) {.thread, gcsafe, raises: [].} =
+  ## This thread is responsible for pinging services we need to track, and checking their heartbeats
   while true:
     for target in args.targets:
       setHeartbeat(target, target.pingHeartbeat)

@@ -1,3 +1,15 @@
+## # Overview
+## 
+## The [monitor (ny-monitor)](src/ny/apps/monitor/main.nim) app is the user interface for visibility into the system. All
+## of the other components are pinged by the monitor to provide simple overviews into the trading system. The paper
+## trading demo is running and accessible at http://142.93.153.5:8080/
+## 
+## 
+## It provides:
+## - visibility into currently running services
+## - info about historical system latency
+## - live and historical info about strategy trading performance
+
 import std/asyncdispatch
 import std/net
 import std/options

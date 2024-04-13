@@ -1,5 +1,13 @@
-## This is the market data connector
-## It subscribes to Alpaca's market data api, and passes the messages to a redis stream
+## # Overview
+## 
+## The [market data websocket (ny-md-ws)](src/ny/apps/md_ws/main.nim) app is responsible for directly connecting to the
+## Alpaca Markets API and ingesting the market data received. It then forwards that data into a redis stream, which other
+## consumers can process. We do this because Alpaca limits us to one market data websocket connection per API key.
+## 
+## 
+## In a production system, we may prefer to convert the market data into an internal format before passing it on, however,
+## for this side project it makes more sense to store the raw market data so that we only need to implement handling for
+## the parts we care about, and ignore everything else until we have a need for it.
 
 import std/asyncdispatch
 import std/enumerate

@@ -12,6 +12,7 @@ type
 
 
 proc dumpHook*(s: var string, v: AlpacaOrderKind) =
+  ## Output in a format compatible with the Alpaca API
   case v
   of Market:
     s.add "market"
@@ -26,6 +27,7 @@ proc dumpHook*(s: var string, v: AlpacaOrderKind) =
 
 
 proc enumHook*(v: string): AlpacaOrderKind =
+  ## Parse input from the Alpaca API
   case v:
   of "market": Market
   of "limit": Limit

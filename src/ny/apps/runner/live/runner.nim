@@ -26,6 +26,9 @@ type
 
 
 proc runner*(args: RunnerThreadArgs) {.thread, nimcall, raises: [].} =
+  ## This function is the thread that runs the actual trading strategy. It handles the IO for the
+  ## strategy (which itself runs as a pure/side-effect-free function).
+
   dynamicLogScope(symbol=args.symbol):
     let monSock = block:
       var retriesLeft = 5

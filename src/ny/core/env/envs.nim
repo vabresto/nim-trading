@@ -13,6 +13,7 @@ proc getOptEnv*(env: string): Option[string] =
 
 
 proc loadOrQuit*(env: string): string =
+  ## Tries to load an environment variable, and terminates the program if it fails
   let opt = getOptEnv(env)
   if opt.isNone:
     error "Failed to load required env var, terminating", env

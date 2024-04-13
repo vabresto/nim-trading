@@ -1,5 +1,7 @@
-## This is a market data recorder
-## It subscribes to a redis stream, and forwards the data into a db
+## # Overview
+## 
+## The [order update recorder (ny-ou-rec)](src/ny/apps/ou_rec/main.nim) is similar to the [market data recorder](#md-rec)
+## except it records order updates instead of market data.
 
 import std/net
 import std/options

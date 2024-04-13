@@ -1,3 +1,7 @@
+## This module provides wrappers for all db access. The primary reason for it is so we can use a single connection
+## to not overload the db, and this requires using a lock. The lock might not be needed, not sure if the pg
+## connection is thread-safe.
+
 import std/rlocks
 
 import ny/core/db/mddb

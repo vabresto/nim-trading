@@ -1,3 +1,10 @@
+## # Overview
+## 
+## This module implements the channels used by the system:
+## - the (single) output channel from all strategies out to the market
+## - the (single) management channel from all strategies to the callback timer
+## - the per-symbol input channels of responses from the market/timer, that need to be processed by the strategy
+
 import std/rlocks
 import std/tables
 

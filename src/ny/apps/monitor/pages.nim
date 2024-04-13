@@ -12,6 +12,7 @@ import ny/apps/monitor/pages/strategy_list
 
 
 proc renderPage*(state: WsClientState): Option[string] {.gcsafe, raises: [].} =
+  ## Utility function to render based on the client's state (which is all tracked server-side)
   case state.kind
   of Overview:
     try:

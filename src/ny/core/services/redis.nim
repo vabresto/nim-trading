@@ -1,3 +1,7 @@
+## # Overview
+## 
+## This module implements a wrapper for redis access, injecting the relevant variables into scope.
+
 import std/options
 
 import chronicles except toJson

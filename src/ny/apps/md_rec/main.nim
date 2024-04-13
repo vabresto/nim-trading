@@ -1,7 +1,9 @@
-## This is a market data recorder
-## It subscribes to a redis stream, and forwards the data into a db
+## # Overview
+## 
+## The [market data recorder (ny-md-rec)](src/ny/apps/md_rec/main.nim) app is responsible for transcribing market data the
+## system receives to store it into the database. This can then be used for backtesting, running locally, analytics, and any
+## other desired uses.
 
-# import std/json
 import std/net
 import std/options
 import std/os

@@ -1,3 +1,12 @@
+## # Overview
+## 
+## The inspector modules are similar to the heartbeat modules, but used to communicate information about the
+## strategy that is currently running. This can be extended to feed other data to the monitor system as well.
+## 
+## 
+## The inspector server module is primarily used by the ny-monitor service to capture the data pushed by the
+## individual trading runners.
+
 import std/algorithm
 import std/asyncdispatch
 import std/asyncnet

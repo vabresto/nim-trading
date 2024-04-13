@@ -19,6 +19,9 @@ logScope:
 
 
 proc createMarketDataIterator*(db: DbConn, symbol: string, date: DateTime): auto =
+  ## This function provides a unified interface for market data, fetching from the
+  ## database instead of the redis stream, used for simulation runs.
+
   (iterator(): Option[MarketDataUpdate] =
     for row in db.fastRows(sql(fmt"""
     SELECT

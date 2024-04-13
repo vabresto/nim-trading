@@ -25,6 +25,8 @@ func monitoringEnabled*(cliArgs: ParsedCliArgs): bool =
   cliArgs.monitorAddress.isSome and cliArgs.monitorPort.isSome
 
 proc parseCliArgs*(cmdLine: string = ""): ParsedCliArgs {.raises: [].} =
+  ## Standardized parsing for command line args shared between all services
+
   # If cmdLine is empty, will pull cli args. Otherwise will read the input string
   # Set a placeholder value in longNoVal because it has different behaviour if non-empty
   var parser = initOptParser(cmdLine, longNoVal = @["_PLACEHOLDER", "heartbeat", "no-heartbeat"])

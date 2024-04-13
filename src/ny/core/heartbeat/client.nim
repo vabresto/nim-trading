@@ -1,3 +1,8 @@
+## # Overview
+## 
+## The heartbeat client is primarily used by the ny-monitor service to ping the various
+## services for liveness heartbeats. It uses a simple custom TCP protocol
+
 import std/json
 import std/net
 

@@ -1,3 +1,8 @@
+## # Overview
+## 
+## This module implements a custom fixed-point price type (although there are floating point
+## math is used for simplicity in some helpers)
+
 import std/math
 import std/strutils
 

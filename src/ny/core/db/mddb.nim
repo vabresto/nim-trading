@@ -1,3 +1,8 @@
+## # Overview
+## 
+## This module wraps all of the database queries into Nim type-safe returns
+
+
 import std/json
 import std/net
 import std/options
@@ -286,6 +291,7 @@ proc getDailyLatencyStats*(db: DbConn): seq[DailyLatencyStat] =
         p99_total_time_sec
       FROM ny.latency_stats_daily
       ORDER BY date DESC
+      LIMIT 100
       """)):
     stats.add DailyLatencyStat(
       date: row[0],

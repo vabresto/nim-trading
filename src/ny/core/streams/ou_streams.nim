@@ -1,3 +1,7 @@
+## # Overview
+## 
+## This module provides standardized handling for order update stream messages (from redis)
+
 import std/enumerate
 import std/json
 import std/net

@@ -1,18 +1,19 @@
-## This is a simple momentum strategy., mostly just a tech demo
-## We wait for 3 consecutive minute bars of monotonically increasing prices (low and high?)
-## Then we send a limit order to buy 100 shares (what price do we use?)
-## If we don't get any fills after 15 minutes (arbitrary), reset to the waiting state
-## If we do get fills, try to exit (no trailing stop implemented yet, so we'll just go for a fixed price increase for now)
-## Maybe consider having a close position at end of day state
+## # Overview
+## This is a simple momentum strategy, mostly just a tech demo.
+## The strategy:
+## - waits for 3 consecutive minute bars of monotonically increasing low prices
+## - sends a limit order to buy 100 shares (at a slightly discounted price compared to the most recent high price we saw over the past minute)
+## - if we don't get any fills after 15 minutes (arbitrary), reset to the waiting state
+## - if we do get fills, try to exit (no trailing stop implemented yet, so we'll just go for a fixed price increase for now). First try an
+##  exit at an optimistic price, and if we don't exit after a few minutes, try again at a pessimistic price
+## - if we have a position at the end of the day, send an MOC order to end flat
 
 import std/options
 import std/sets
-# import std/strutils
 import std/tables
 import std/times
 
 import chronicles
-# import fusion/matching
 
 import ny/core/md/md_types
 import ny/core/types/md/bar_details

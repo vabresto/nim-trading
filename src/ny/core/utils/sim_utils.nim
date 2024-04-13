@@ -1,3 +1,7 @@
+## # Overview
+## 
+## This module implements some helpers for live vs simulation mode
+
 import chronicles
 
 var gIsSimulation = false

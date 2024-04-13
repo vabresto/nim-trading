@@ -1,3 +1,8 @@
+## # Overview
+## 
+## The simulator provides a runtime environment for simulation runs, and connects the trading strategy
+## with the matching engine.
+
 import std/heapqueue
 import std/json
 import std/net
@@ -158,6 +163,8 @@ proc createEventIterator*(): auto =
 
 
 proc simulate*(sim: var Simulator) =
+  ## This is the main processing by the simulator.
+
   info "Creating event iterator ..."
   let eventItr = createEventIterator()
   

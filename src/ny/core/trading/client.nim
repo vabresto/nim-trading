@@ -20,6 +20,7 @@ type
 
 
 proc initAlpacaClient*(baseUrl: string, alpacaKey: string, alpacaSecret: string): ?!AlpacaClient {.raises: [].} =
+  ## Creates an http client with appropriate headers set for accessing the Alpaca API
   try:
     var client = newHttpClient()
     client.headers = newHttpHeaders({

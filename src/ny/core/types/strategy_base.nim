@@ -1,3 +1,9 @@
+## # Overview
+## 
+## The `StrategyBase` class is the base class for all strategies, and provides various
+## helper functions (ex. P&L tracking, pending/open orders, etc)
+
+
 import std/math
 import std/sets
 import std/tables

@@ -30,7 +30,7 @@ type
 
 
 proc skimJson*(s: string): seq[MdWsRawMsg] =
-  ## NOTE: This is not intended to be a public function, but that's required for runnable examples
+  ## NOTE: This is not intended to be a public function, but that's required for runnable examples to get executed properly without further configs
   runnableExamples:
     let res1 = skimJson(""" [{"S":"AMD","T":"q","c":["R"],"t":"2024-03-18T13:30:01.842926026Z","z":"C","ap":194.24,"as":1,"ax":"V","bp":192.4,"bs":2,"bx":"V"}] """)
     assert res1.len == 1
@@ -84,6 +84,8 @@ proc skimJson*(s: string): seq[MdWsRawMsg] =
 
 
 proc skimMdWsReply*(ws: WebSocket): Future[MdWsQuickReply] {.async.} =
+  ## Get a websocket message and convert it into a quick reply. We do minimal processing so we can get it to redis and
+  ## the rest of the system ASAP.
   let rawReply = await ws.receiveStrPacket()
   let receiveTimestamp = getNowUtc()
   if rawReply == "":
@@ -110,6 +112,7 @@ proc receiveMdWsReply(ws: WebSocket): Future[MdWsReply] {.async.} =
 
 
 proc subscribeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
+  ## Send the subscription request message down the websocket
   let subscribeMessage = $ %*{
     "action": "subscribe",
     "trades": symbols,
@@ -120,6 +123,9 @@ proc subscribeData*(ws: WebSocket, symbols: seq[string]) {.async.} =
 
 
 proc initWebsocket*(feed: string, alpacaKey: string, alpacaSecret: string, mdSymbols: seq[string]): Future[WebSocket] {.async.} =
+  ## Create a websocket for receiving market dat. This function handles auth and subscriptions, returning a websocket that
+  ## can be plugged into redis.
+
   # First, create the socket
   var socket: WebSocket = await newWebSocket("wss://stream.data.alpaca.markets/v2/" & feed)
   socket.setupPings(15)
