@@ -65,6 +65,22 @@ undocumented feature, but has the advantage of streaming fake market data even o
 is very useful for testing and development.
 
 
+## System Requirements
+
+The entire trading system currently works running on a Digital Ocean 2 vCPU/2GB RAM configuration (currently $18/month)
+when running with the `iex` data feed and a couple of symbols.
+
+As all of the market data processed is stored in redis, processing more than a few symbols or using the `sip` data feed
+will require significantly more RAM. A heavily traded symbol from the IEX feed (ex. AMD, MSFT) produces between 100-150
+MB of data per day in RAM (redis).
+
+Disk usage is minimal, as postgres can reasonably efficiently store the data. For a 19 day range, including some
+weekends and partial days, the raw market data consumes about 1.7GB of disk space and 500MB for the index. Overall, a
+month's worth of full IEX data should fit in under 5GB (complete with indices). Order update data is very small, 
+producing only about 10MB over the same time range (from the [dummy](src/ny/strategies/dummy/dummy_strat.nim) strategy)
+though results may vary when using other strategies/data feeds.
+
+
 ## Components
 
 ### EoD Tool
