@@ -1,3 +1,5 @@
+name: Update Docs
+
 # from https://github.com/ire4ever1190/nim-docs-action
 on:
   push:
