@@ -42,4 +42,4 @@ jobs:
 
     - name: Deploy via SSH
       run: |
-        ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_SERVER_DETAILS }} "docker pull ghcr.io/${{ github.repository_owner }}/ny-trading:latest && cd ny && docker compose restart"
+        ssh -o StrictHostKeyChecking=no ${{ secrets.DEPLOY_SERVER_DETAILS }} "docker pull ghcr.io/${{ github.repository_owner }}/ny-trading:latest && cd ny && docker compose down && docker compose up -d"
