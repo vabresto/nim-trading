@@ -1,8 +1,7 @@
 bin/
+site/
 
 .env
 
 nimble.paths
 nimble.develop
-
-private_ssh_key

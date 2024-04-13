@@ -39,3 +39,7 @@ requires "https://github.com/vabresto/nim-redis.git#2327f97bc097e46c8710264cefef
 
 # Indirect dependencies, pin git hashes because they don't properly update versions
 requires "stew#1662762c0144854db60632e4115fe596ffa67fca"
+
+
+task mk_docs, "Make docs":
+  exec """nimble -y doc  --project --outdir="site/" --docCmd:skip --index:only src/ny/docs.nim"""

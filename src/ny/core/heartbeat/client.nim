@@ -11,15 +11,25 @@ logScope:
 proc pingHeartbeat*(address: string, port: Port = kServerPort): bool {.raises: [].} =
   try:
     var client = newSocket()
-    client.connect(address, port)
+    var response: string
 
-    let response = client.recvLine()
+    # Not all consumers compile with ssl support enabled, so we need to handle both situations
+    when declared(SslError):
+      try:
+        client.connect(address, port)
+        response = client.recvLine()
+      except SslError:
+        error "Ssl errored!", address, port, error=getCurrentExceptionMsg()
+    else:
+      client.connect(address, port)
+      response = client.recvLine()
+
     trace "Got heartbeat", response
     true
   except TimeoutError:
     warn "Heartbeat timed out", address, port
     false
-  except IOError, ValueError, JsonParsingError, OSError, SslError:
+  except IOError, ValueError, JsonParsingError, OSError:
     error "Heartbeat errored!", address, port
     false
 
