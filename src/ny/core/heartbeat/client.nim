@@ -19,7 +19,7 @@ proc pingHeartbeat*(address: string, port: Port = kServerPort): bool {.raises: [
   except TimeoutError:
     warn "Heartbeat timed out", address, port
     false
-  except IOError, ValueError, JsonParsingError, OSError:
+  except IOError, ValueError, JsonParsingError, OSError, SslError:
     error "Heartbeat errored!", address, port
     false
 
