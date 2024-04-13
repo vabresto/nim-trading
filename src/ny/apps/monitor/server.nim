@@ -38,6 +38,7 @@ proc indexHandler(request: Request) =
           <li><a ws-send hx-vals='{"type": "change-page", "new-page": "overview"}'>Overview</a></li>
           <li><a ws-send hx-vals='{"type": "change-page", "new-page": "stats-daily-latency"}'>Latency</a></li>
           <li><a ws-send hx-vals='{"type": "change-page", "new-page": "strategy-list"}'>Strategies</a></li>
+          <li><a href="https://github.com/vabresto/nim-trading">Github</a></li>
         </ul>
       </nav>
     </header>
